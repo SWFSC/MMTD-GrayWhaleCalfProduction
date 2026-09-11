@@ -6,6 +6,19 @@
 # "nb_shiftingpeak", or "nb_shiftingpeak_centered". The "nb_fixedyear" model is
 # selected to produce final estimates for 2026. To fit the Negative-Binomial model
 # to each year independently, use 'calf_production_single_year_stan.R'. 
+# 
+# This saves two files when save.files is set to TRUE: .rds and .info. 
+# The .rds file contains posterior samples from the stan run
+# The .info file contains the following information in a named list:
+#      data.ext = data extension, 
+#      data.path = data path,
+#      model = model file name,
+#      pre.stan.data = data that are cleaned but not in the stan input format,
+#      stan.data = Stan input data,
+#      Run.time = execution time,
+#      Run.Date = date of execution,
+#      System = computer system that was used
+
 
 rm(list = ls())
 # Load required library
@@ -21,9 +34,9 @@ save.files <- TRUE #FALSE #
 
 data.ext <- "v3" # has to be v3
 
-model <- "nb_fixedyear"
+#model <- "nb_fixedyear"
 #model <- "nb_shiftingpeak"
-#model <- "nb_shiftingpeak_centered"
+model <- "nb_shiftingpeak_centered"
 
 # Change this to use results from a previous run
 run.date <- Sys.Date() #"2026-07-09" #"2026-06-26"    
