@@ -13,10 +13,12 @@ The order of the data processing and analysis should be:
 1. Raw data should be saved in the 'data/All data' directory. Folder names are 'C_C YYYY', where YYYY indicates a four-digit year. There is a space between C_C and YYYY.
 2. Edit list.sheet.names.inshore, list.col.types.inshore, and list.col.names.inshore in *GrayWhaleCalfProduction_fcns.R* (if you pull the most recent version, this should be done) 
 3. Run *Extract Excel Data_v2.Rmd*. This will create two subfolders within the data folder: 'Processed data v3' and 'Formatted Annual Data v3'. 'v3' refers to the extraction method version, and the user should ignore it. 
-4. Run *calf_production_hierarchical_stan.R*. This script can run all models below. See Eguchi et al. (2026) for details. This step requires the following Stan code in the 'models' subdirectory:
+4. To run the Jags model (*GWCalfCount_v1.jags*), use *calf_production_jags.R*.
+5. Run *Combine inshore and offshore sightings.R* This file combines sightings and creates one file per year. Output files from this script is used to create the input object for the next script.
+6. Run *calf_production_hierarchical_stan.R*. This script can run all models below. See Eguchi et al. (2026) for details. This step requires the following Stan code in the 'models' subdirectory:
    1. *GWCalfCount_nb_fixedyear.stan*
    2. *GWCalfCount_nb_shiftingpeak.stan*
    3. *GWCalfCount_nb_shiftingpeak_centered.stan*
    4. *GWCalfCount_nb_singleyear.stan*
-5. Edit *gray whale calf production tech memo 2026 v4.qmd* to create a new report. This is a Quarto document. 
-6. In the Quarto document, *reference.bib* is used to create citations and the literature cited section. Because it includes my reference library as of the time of creating the 2026 report, this file is too large for GitHub (approx. 7MB) and has not been uploaded. Your reference manager (e.g., Zotero, Mendeley, etc.) can create a .bib reference file. To facilitate formatting the literature cited section, two .csl files for Marine Mammal Science and Marine Ecology Progress Series are included. 
+7. Edit *gray whale calf production tech memo 2026 v4.qmd* to create a new report. This is a Quarto document. 
+8. In the Quarto document, *reference.bib* is used to create citations and the literature cited section. Because it includes my reference library as of the time of creating the 2026 report, this file is too large for GitHub (approx. 7MB) and has not been uploaded. Your reference manager (e.g., Zotero, Mendeley, etc.) can create a .bib reference file. To facilitate formatting the literature cited section, two .csl files for Marine Mammal Science and Marine Ecology Progress Series are included. 
