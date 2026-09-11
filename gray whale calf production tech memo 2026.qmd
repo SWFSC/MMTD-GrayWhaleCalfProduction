@@ -1,0 +1,413 @@
+---
+title: "Gray Whale Calf Production 2026"
+format: 
+  docx:
+    reference-doc: reference_template.docx
+number-sections: false
+editor: visual
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+rm(list = ls())
+library(tidyverse)
+library(bayesplot)
+library(loo)
+library(ggplot2)
+library(posterior)
+library(cmdstanr)  
+# # we recommend running this in a fresh R session or restarting your current session
+# install.packages("cmdstanr", repos = c('https://stan-dev.r-universe.dev', getOption("repos")))
+
+source("GrayWhaleCalfProduction_fcns.R")
+
+data.path <- "data\\Formatted Annual Data Combined v3\\"
+save.fig <- FALSE #TRUE
+
+
+# Bring in the Stan results:
+model <- "nb"
+run.date <- "2026-06-26"   # Change this to use results from a previous run
+out.file <- paste0("GWCalfCount_Stan_", model, "_", run.date, "_")
+fit_ <- readRDS(paste0("Rdata\\", out.file, ".rds"))
+out.list <- readRDS(paste0("Rdata\\", out.file, ".info"))
+
+```
+
+## INTRODUCTION {.unnumbered}
+
+Eastern North Pacific (ENP) gray whales (*Eschrichtius robustus*) migrate annually between foraging grounds in the Arctic and wintering grounds in Baja California (Rice and Wolman 1971). Females give birth in protected lagoons in Baja California Sur, Mexico, and migrate north with their calves in the spring of each year. Shore-based counts of female gray whales accompanying their calves (i.e., mother-calf pairs) have been conducted annually from the Piedras Blancas Lighthouse Station in central California since 1994[^1]. Survey methods were evaluated in detail at the outset of the study (Perryman et al. 2002) and have remained consistent since 1994 (Weller and Perryman 2019, Stewart and Weller 2021).
+
+[^1]: The annual survey was not conducted in 2020 due to COVID-19. In 2021, the survey was completed under COVID-related staffing restrictions, which included a three-person rather than four-person observer rotation during some weeks to reduce the number of people in close proximity. During periods when the three-person rotation was in place, the maximum survey effort in a given day was limited to 9 hours rather than the typical 12 hours for a four-person rotation.
+
+In 2021, Stewart and Weller (2021) presented a new Bayesian modeling approach to estimate annual calf production of ENP gray whales. Their approach accounted for uncertainty during unsampled periods (i.e., when there was no sampling effort; evenings, weekends, and bad weather days). In the recent years, the observed counts of mother-calf pairs have declined precipitously. This resulted in numerical convergence issues using the method of Stewart and Weller (2021). Here we present an updated approach to the data, which can accommodate many zero counts observed in recent years. We report the abundance estimates for the entire time-series using the previous and new approaches.
+
+## METHODS {.unnumbered}
+
+Data for this analysis were collected between 1994-2026 using standardized methods (Perryman et al. 2002, Weller and Perryman 2019, Stewart and Weller 2021). Briefly, a rotating pair of observers conducted counts of mother-calf pairs from a shore station during a 12-hour watch period per day. Watches were terminated by poor weather (e.g., rain or fog), visibility or sea conditions, resulting in total daily effort frequently below the maximum of 12 hours.
+
+The protocol for processing the raw data prior to analysis was similar to that in Stewart and Weller (2021). However, the data extraction method used to format the raw data prior to analysis was updated in 2024 to allow for start times prior to 7:00 am and to calculate effort more accurately when sighting conditions change mid-shift (see Lang et al. 2024 for details).
+
+The previous analysis using the method of Perryman et al. (2002) was based on the following observations and assumptions. Perryman et al. (2002) determined that: (a) the number of calves passing offshore and beyond the visual range of shore-based observers was negligible (data from aerial surveys) and (b) the passage rates of mother-calf pairs were consistent between daytime and nighttime periods (based on recording from infrared sensors). Independent replicate counts from two different shore-based observation stations conducted over seven consecutive years (1994-2000) reported a detection probability of 0.889 (SE 0.06375) (Perryman et al. 2002). All of these assumptions were maintained for the method of Stewart and Weller (2021) and the proposed new approach.
+
+The framework developed by Stewart and Weller (2021) relied on an independent, single-year model utilizing a compound Poisson-Binomial likelihood structure. The model structure calculated the observed counts ($Obs_i$) within discrete 3-hour watch intervals $i$ as a binomial sampling process nested inside a weekly Poisson passage rate ($\lambda_{wk}$):
+
+$$Obs_{i} \sim \text{Binomial}(\text{True}_{i}, p_{i})$$
+
+$$\text{True}_{i} \sim \text{Poisson}(\lambda_{wk_{i}})$$
+
+While this framework more fully accounted for uncertainty during unsampled periods than the method by Perryman et al. (2002), it was not capable of computing the total number of mother-calf pairs ($\text{True}_{i}$) when the observed number decreased dramatically for the following reasons.
+
+**The Poisson Mean-Variance Constraint:** A property of the standard Poisson distribution is that its variance must equal its mean ($\text{Var}(X) = \text{Mean}(X)$). Migrating cetacean count data are often overdispersed; they are a mixture of long sequences of zero sightings with groups of variable counts, sometimes in large numbers. Because the Poisson model lacked an independent parameter to accommodate overdispersion, the only way it could handle these large variabilities was by forcing its estimated mean weekly passage rates ($\lambda_{wk}$) upward. This structural constraint introduced an artificial positive bias in unobserved periods, resulting in estimates that were sensitive to right-skewed data.
+
+```{r bad-convergence-example, echo=FALSE, include=FALSE}
+
+data.ext <- "v3" # "v2"  # or v2
+model <- "v1"
+
+MCMC.params <- list(n.samples = 100000,
+                    n.thin = 100,
+                    n.burnin = 50000,
+                    n.chains = 5)
+
+data.path <- paste0("data\\Formatted Annual Data Combined ", data.ext, "\\")
+FILES <- list.files(path = data.path,
+                    pattern = paste0(data.ext, ".csv"))
+
+# get data
+all.data <- count.obs <- effort <- week <- n.obs <- n.weeks <- list()
+years <- vector(mode = "numeric", length = length(FILES))
+
+for(i in 1:length(FILES)){
+  years[i] <- as.numeric(str_split(FILES[i], " Formatted_combined_v3.csv")[[1]][1]) 
+  
+  data <- read.csv(paste0(data.path, FILES[i]))
+  data$Effort[is.na(data$Effort)] <- 0
+  data$Effort[data$Effort > 3] <- 3
+  data$Sightings[data$Effort == 0] <- 0  # no effort, no sightings
+  
+  all.data[[i]] <- data.frame(count.obs = as.numeric(data$Sightings),
+                              effort.hrs = data$Effort,
+                              week = data$Week,
+                              calendar.year = year(as.Date(data$Date)))
+  
+}
+
+calf_data <- do.call("rbind", all.data)  
+    
+# Let's assume your raw data frame is called 'calf_data'
+# and has columns: calendar_year, week_num, count_obs, effort_hours
+
+# 1. Prepare indices securely
+prepped_data <- calf_data %>%
+  mutate(
+    # Convert years and weeks to consecutive integers starting at 1
+    year.idx = as.integer(as.factor(calendar.year)),
+    week.idx = as.integer(as.factor(week))
+  ) %>%
+  arrange(year.idx, week.idx)
+
+prepped_data.1 <- prepped_data %>%
+  filter(calendar.year == c(2025, 2026))
+
+# 2. Extract constants for JAGS bounds
+n_obs   <- nrow(prepped_data.1)
+n_years <- max(prepped_data.1$year.idx)
+n_weeks <- max(prepped_data.1$week.idx)
+
+# 3. Package into a named list for JAGS
+jags_data <- list(
+  n.obs     = n_obs,
+  n.years   = n_years,
+  n.weeks   = n_weeks,
+  count.obs = prepped_data.1$count.obs,
+  effort    = prepped_data.1$effort.hrs,
+  year      = prepped_data.1$year.idx,
+  week      = prepped_data.1$week.idx
+)
+
+# 5. Parameters to monitor
+parameters <- c("year.eff", "week.eff", "sigma.eps", 
+                "Total.Calves.AllYears", "count.true",
+                "lambda")
+
+model.file <- paste0("models\\GWCalfCount_", model, ".jags")
+inits <- function() {
+  list(
+    count.true = jags_data$count.obs + 2,
+    mu.year    = 0,
+    tau.year   = 1,
+    tau.week   = 1,
+    tau.eps    = 1
+  )
+}
+
+jm.out <- jagsUI::jags(jags_data,
+                       inits = inits, #NULL,
+                       parameters.to.save= parameters,
+                       model.file = model.file, 
+                       n.chains = MCMC.params$n.chains,
+                       n.burnin = MCMC.params$n.burnin,
+                       n.thin = MCMC.params$n.thin,
+                       n.iter = MCMC.params$n.samples,
+                       DIC = T, parallel=T)
+
+post <- posterior::as_draws(jm.out$samples)
+summary.posterior <- posterior::summarise_draws(post)
+
+```
+
+**Lack of Information with Many Zeros:** The Poisson approach estimated each calendar year independently using flat or vague priors on weekly rates ($\lambda_{wk} \sim \text{Uniform}(0, 40)$). When the counts dropped to the extreme lows observed in 2025 and 2026, few calves were observed in many weeks. When a week contains only a few sightings, an independent model possesses no informational data to bound the parameter. The posterior distribution for that week's passage rate ($\lambda_{wk}$) flattens and its uncertainty increases to the point where the Markov Chain Monte Carlo (MCMC) sampler cannot reach convergence. For example, applying the same jags model to the last two years of data (2025 and 2026) resulted in the posterior of weekly means to be 3 to 12, where their lower 95% confidence limits were virtually zero and the upper 95% confidence limits 15 to 38.
+
+**Phenological Alignment Mismatches:** The starting date of the survey season varied across the historical time series, shifting from as early as March 10th to as late as March 31st. The previous model treated the first week of field operations as a "Week 1" across all years. Although this problem was not necessarily a concern when the analysis was conducted independently for each year, the new proposed approach requires the timing of observations to be aligned over the years.
+
+### Mathematical Description of the Updated Approach
+
+The updated approach solves these limitations by implementing the following three improvements: transitioning from the Poisson model to a type-2 Negative Binomial likelihood, using data from all years in a hierarchical structure, and aligning the sampling weeks over the years.
+
+#### Week Alignment
+
+To ensure that weekly seasonal parameters represent the same window of observations across decades, the new approach uses a global ISO week indexing using *lubridate::isoweek()*. Let $\text{iso}_{wk_i}$ be the raw ISO week of observation $i$, and let $\text{global}_{min_{week}}$ be the absolute earliest start date recorded across the 1994–2026 time series (ISO Week 11). The standardized, aligned week index $\text{week}_{idx_i}$ is calculated as:
+
+$$\text{week}_{idx_i} = \text{iso}_{wk_i} - \text{global}_{min_{week}} + 1$$
+
+This transformation treats $\text{week}_{idx}$ equally among the years. Early-start years populate the earliest bins ($\text{week}_{idx} = 1$), while late-start years automatically begin directly at later bins (e.g., $\text{week}_{idx} = 4$), matching the timeline of observations among years correctly.
+
+#### Negative Binomial Type-2 Likelihood
+
+To allow the variance to be different from the mean, we changed the model to a type-2 Negative Binomial likelihood with a log-scale mean linear predictor ($\log(\alpha_i)$) and a continuous constant inverse-dispersion parameter ($\phi$). For all intervals where observers were present ($\text{effort}_i > 0$), the likelihood is expressed as:
+
+$$\text{count}_{obs_i} \sim \text{Neg-Binomial}(\alpha_i, \phi)$$
+
+The probability mass function (PMF) evaluating this process is:
+
+$$ P(\text{count}_{obs_i} = y | \alpha_i, \phi) = \frac{\Gamma(y + \phi)}{y! \Gamma(\phi)} \left(\frac{\phi}{\alpha_i + \phi}\right)^\phi \left(\frac{\alpha_i}{\alpha_i + \phi}\right)^y $$
+
+In the Negative Binomial model, the variance scales quadratically relative to the mean, enabling the model to deal with high variance of counts due to environmental and sampling variability independent of the mean:
+
+$$\text{Var}(\text{count}_{obs_i}) = \alpha_i + \frac{\alpha_i^2}{\phi}$$
+
+As $\phi \to \infty$, the distribution converges to a standard Poisson distribution. Smaller values of $\phi$ indicate a highly overdispersed system with long-tailed counts and excess zeros.
+
+The log-scale mean linear predictor ($\log(\alpha_i)$) incorporates the baseline detection probability ($p_{obs} \sim \text{Normal}(0.889, 0.06375)$) reported in Perryman et al. (2002):
+
+$$\log(\alpha_i) = \text{year_eff}_{\text{year_idx}[i]} + \text{week_eff}_{\text{week_idx}[i]} + \log(p_{obs}) + \log(\text{offset}_i)$$
+
+#### Hierarchical Structure & Non-Centered Parameterization
+
+Information from years with large numbers of counts is used for years with low counts, where annual and weekly effects are modeled as random deviations from a shared distribution.
+
+The observed changes in counts from over 1000 to less than 50 create a numerical problem when estimating the total abundance. The MCMC that starts in a parameter space with large abundance cannot effectively sample the space when the total abundance decreases significantly. This numerical problem is alleviated by implementing a non-centered parameterization.
+
+$$\text{year_eff}_{y} = \mu_{\text{year}} + \sigma_{\text{year}} \cdot \eta_{\text{year}, y}, \quad \eta_{\text{year}, y} \sim \text{Normal}(0, 1)$$
+
+$$\text{week_eff}_w = \sigma_{\text{week}} \cdot \eta_{\text{week}, w}, \quad \eta_{\text{week}, w} \sim \text{Normal}(0, 1)$$
+
+Where: - $\mu_{\text{year}}$ represents the multi-decade baseline log-abundance intercept. - $\sigma_{\text{year}}$ and $\sigma_{\text{week}}$ are the standard deviations among years and weeks, respectively. - $\eta_{\text{year}, y}$ and $\eta_{\text{week}, w}$ are independent standard normal vectors acting as standard Z-scores among years and weeks, respectively.
+
+The $\eta$s are not the actual shift, but they are standard scores, while $\sigma$s act as the ruler that rescales them. This can be explained in a physical analogy of walking away from a global baseline ($\mu_{\text{year}}$): $\eta_{\text{year}, y}$ is the *number of steps* you take (and the direction). Because it comes from a standard normal distribution ($\text{Normal}(0,1)$), it can pick any value from $-3$ to $+3$ (covering 99.7% of all possibilities). An $\eta$ of $-2.5$ means you took $2.5$ steps backward. $\sigma_{\text{year}}$ is the *size of each step*. If the data shows that years fluctuate wildly, Stan will estimate a large value for $\sigma_{\text{year}}$ (e.g., $\sigma_{\text{year}} = 1.5$ on the log scale). So, if a specific year (such as 2025) experiences a large decline, $\eta_{\text{year}}$ is not limited by its variance of 1. It becomes a large value, e.g., $-2.4$. When multiplied by a large step size ($\sigma_{\text{year}} = 1.5$), the actual distance traveled becomes:
+
+$$-2.4 \times 1.5 = -3.6 \text{ units on the log scale}$$
+
+On the linear scale, $\exp(-3.6)$ is a **97% reduction in calves**.
+
+The migration timing curve is shared across all years, allowing the model to know when the peak migration occurs even if a specific year yields mostly zero counts:
+
+$$\text{week_eff}_w = \sigma_{\text{week}} \cdot \eta_{\text{week}, w}$$
+
+$$\eta_{\text{week}, w} \sim \text{Normal}(0, 1)$$
+
+The overdispersion/scaling factor ($\sigma_{week}$) is shared among years whereas the actual seasonal effects ($\text{week_eff}$) are week-dependent, but equal among years.
+
+- $\sigma_{week}$: This is a single number (e.g., `0.85`) with uncertainty. It represents the global "amplitude" or waviness of the seasonal migration curve.
+- $\text{week_eff}$: This is a list of `r max(out.list$pre.stan.data$week_idx)` completely independent numbers—one for each specific week of the season ($1, \cdots, W$).
+
+$$\text{week_eff} = \sigma_{\text{week}} \times \begin{bmatrix} \eta_{\text{week}, 1} \\ \eta_{\text{week}, 2} \\ \vdots \\ \eta_{\text{week}, W} \end{bmatrix} = \begin{bmatrix} \text{week_eff}[1] \\ \text{week_eff}[2] \\ \vdots \\ \text{week_eff}[W] \end{bmatrix}$$
+
+Because each week gets its own raw deviation ($\eta_{\text{week}, w}$), Week 1 has a completely different numerical value from Week 4 or Week 8, for example. This allows the model to specify a unique, week-specific passage rate curve that changes as the migration passes the station. The model assumes that the underlying timing of the migration. What changes between the years is the $\text{year_eff}$ intercept, which shifts the entire W-week curve up (for high-abundance years like 1994) or down (for historic low-abundance years like 2025).
+
+Because $\text{week_eff}[4]$ is tied to Week 4 of every year, the model estimates its value using the data from all years combined. If Week 4 in 2025 happens to have terrible weather and reveals zero calf counts due to missing effort, the model doesn't assume Week 4 had no whales. It looks at the shared history of $\text{week_eff}[4]$ from the other years, adjusts it for the lower 2025 baseline ($\text{year_eff}[2025]$), and uses that mathematical shape to impute how many calves likely passed by undetected while the observers were unavailable, or the lower 2025 baseline ($\text{year_eff}[2025]$) is estimated with confidence if many hours of observations were available for the 2025 season.
+
+### Post-Processing & Latent Population Reconstruction
+
+Because Stan requires continuous parameter space for its MCMC algorithm, it cannot directly estimate discrete integer parameters, such as the unobserved true mother-calf counts. The true counts are obtained from post-processing of MCMC outputs in R. It uses the conjugate property between the Gamma and Poisson distributions.
+
+The Negative Binomial model is mathematically equivalent to a continuous latent passage rate ($\lambda_i$) drawn from a Gamma distribution, which then parameterizes a Poisson process. In other words, $\lambda_i$ is treated as a random variable itself that changes every shift We assume $\lambda_i$ follows a Gamma distribution, which is perfect for continuous, strictly positive numbers like rates. Given a specific rate $\lambda_i$, the probability of observing $y$ calves is:
+
+$$P(Y = y \mid \lambda_i) = \frac{\lambda_i^y e^{-\lambda_i}}{y!}$$
+
+The rate $\lambda_i$ of the Poisson process is drawn from a Gamma distribution parameterized by the expected mean $\mu$ and the overdispersion parameter $\phi$:
+
+$$f(\lambda_i \mid \phi, \mu) = \frac{\left(\frac{\phi}{\mu}\right)^\phi}{\Gamma(\phi)} \lambda_i^{\phi-1} e^{-\frac{\phi}{\mu}\lambda_i}$$
+
+Because Stan cannot sample discrete integers, meaning it cannot handle an hourly parameter like "true integer calf count," the rate parameter ($\lambda_i$) is integrated out from the equation. We calculate the overall probability of seeing $y$ calves by multiplying the Poisson and Gamma equations together and integrating across every possible value of $\lambda_i$ from 0 to infinity:
+
+$$P(Y = y) = \int_{0}^{\infty} P(Y = y \mid \lambda) \cdot f(\lambda \mid \phi, \mu) \, d\lambda$$
+
+$$P(Y = y) = \int_{0}^{\infty} \left( \frac{\lambda^y e^{-\lambda}}{y!} \right) \cdot \left( \frac{\left(\frac{\phi}{\mu}\right)^\phi}{\Gamma(\phi)} \lambda^{\phi-1} e^{-\frac{\phi}{\mu}\lambda} \right) \, d\lambda$$
+
+This can be simplified further by pulling the constants out of the integral and combine the $\lambda$ and $e$ terms:
+
+$$P(Y = y) = \frac{\left(\frac{\phi}{\mu}\right)^\phi}{y! \, \Gamma(\phi)} \int_{0}^{\infty} \lambda^{(y+\phi)-1} e^{-\left(1 + \frac{\phi}{\mu}\right)\lambda} \, d\lambda$$
+
+The integral evaluates to a known ratio of Gamma functions. When the Gamma function is substituted in to the equation, the integration simplifies into this equation:
+
+$$P(Y = y) = \frac{\Gamma(y + \phi)}{y! \, \Gamma(\phi)} \left(\frac{\phi}{\mu + \phi}\right)^\phi \left(\frac{\mu}{\mu + \phi}\right)^y$$
+
+This is the Negative Binomial probability mass function.
+
+$$\lambda_i \sim \text{Gamma}\left(\phi, , \frac{\phi}{\mu_{\text{true}, i}}\right), \quad \text{where } \mu_{\text{true}, i} = \exp(\text{year_eff}_{\text{year_idx}[i]} + \text{week_eff}_{\text{week_idx}[i]})$$
+
+Using this conjugate property, we combine the Gamma prior with the observed field counts to derive an exact, analytical posterior distribution for the true underlying passage rate $\lambda_i$ for every 3-hour interval:
+
+$$\lambda_i \mid \text{count}_{obs,i} \sim \text{Gamma}\left(\phi + \text{count}_{obs,i}, \, \frac{\phi}{\mu_{\text{true}, i}} + p_{\text{obs_corr}, i}\right)$$
+
+Where $p_{\text{obs_corr}, i} = p_{obs} \times \exp(log_{\text{offset}_i})$. For every saved MCMC iteration, a continuous rate $\lambda_i$ is drawn from this updated distribution.
+
+### Unobserved Calf Imputation
+
+The number of calves that slipped past the lighthouse station unobserved is a function of the unsampled portion of the timeline ($1 - p_{\text{obs_corr}, i}$). The missed individuals are simulated using a stochastic Poisson draw:
+
+$$\text{count}_{\text{missed},i} \sim \text{Poisson}(\lambda_i \cdot (1 - p_{\text{obs_corr}, i}))$$
+
+The true integer number of calves ($T_i$) that traversed the study area during interval $i$ is calculated as the sum of the known observed counts and the simulated missed counts:
+
+$$T_i = \text{count}_{obs,i} + \text{count}_{\text{missed},i}$$
+
+#### Behavior on Zero-Effort Days
+
+When a row represents an unobserved weekend, night, or weather cancellation block ($\text{effort}_i = 0$), the parameters automatically default to:
+
+$$\text{count}_{obs,i} = 0, \quad p_{\text{obs_corr}, i} = 0$$
+
+Substituting these constants into the conjugate equations demonstrates how the model switches to full population imputation:
+
+$$\lambda_{i, \text{unobserved}} \sim \text{Gamma}\left(\phi + 0, \, \frac{\phi}{\mu_{\text{true}, i}} + 0\right) \implies \lambda_{i, \text{unobserved}} \sim \text{Gamma}\left(\phi, \, \frac{\phi}{\mu_{\text{true}, i}}\right)$$
+
+$$\text{count}_{{missed}_{i, \text{unobserved}}} \sim \text{Poisson}(\lambda_{i, \text{unobserved}} \cdot (1 - 0)) \implies \text{Poisson}(\lambda_{i, \text{unobserved}})$$
+
+For these unobserved blocks, the model safely strips away the data-dependent components and imputes the missing counts entirely from the long-term, across-year hierarchical trends.
+
+### Prior Distributions
+
+The model applies weakly informative priors:
+
+- **Observation Detection Probability:** $p_{\text{obs}} \sim \text{Normal}(0.889, 0.06375) \mathbf{T}[0,1]$
+
+- **Global Intercept:** $\mu_{\text{year}} \sim \text{Normal}(0, 5)$
+
+- **Hierarchical Scaling Parameters:** $\sigma_{\text{year}} \sim \text{Half-Normal}(0, 2)$, $\sigma_{\text{week}} \sim \text{Half-Normal}(0, 2)$
+
+- **Inverse-Dispersion Parameter:** $\phi \sim \text{Gamma}(2, 0.1)$ (priors shaped to prevent $\phi \to 0$ and maintain numerical stability)
+
+## RESULTS AND DISCUSSION
+
+```{r data.2026, echo=FALSE, include=FALSE, message=FALSE}
+
+data.2026 <- read.csv(paste0(data.path, "2026 Formatted_combined_v3.csv"))
+
+data.2026 %>% group_by(Date) %>%
+  summarise(Daily_Sightings = sum(Sightings),
+            Daily_Effort = sum(Effort)) %>%
+  mutate(Date = as.Date(Date),
+         Sightings_per_Effort = Daily_Sightings/Daily_Effort) -> data.2026.by.day 
+
+p.daily.sightings <- ggplot(data.2026.by.day) +
+  geom_point(aes(x = Date, y = Sightings_per_Effort)) +
+  geom_path(aes(x = Date, y = Sightings_per_Effort)) +
+  xlab("2026") + ylab("Observed number of mother-calf pairs per effort hour")
+
+if (save.fig)
+  ggsave(filename = "figures\\daily_sightings_2026.png",
+         plot = p.daily.sightings,
+         device = "png", 
+         dpi = 600)
+
+
+# 1. Extract the raw log-likelihood matrix 
+raw_log_lik <- fit_$draws("log_lik", format = "matrix")
+
+# 2. Identify the columns that actually represent real survey days
+real_data_cols <- which(out.list$stan.data$effort > 0)
+
+# 3. Subset the matrix to ONLY include those 6,120 real days
+clean_log_lik_mat <- raw_log_lik[, real_data_cols]
+
+# 4. Run LOO on the cleaned matrix
+loo_nb_fixed <- loo(clean_log_lik_mat, cores = 4)
+
+# Summarize global parameters and hierarchical standard deviations
+global_summary <- fit_$summary(c("p_obs", "mu_year", "sigma_year", "sigma_week", "phi"))
+
+# post processing to estimate abundance:  
+stan.out <- stan.post.process(stan.fit = fit_, 
+                              stan.data = out.list$stan.data, 
+                              pre.stan.data = out.list$pre.stan.data,
+                              out.file.name = out.file,
+                              save.file = F, 
+                              save.fig = F)
+
+PPC.out <- PPC_counts(stan.fit = fit_,
+                      stan.data = out.list$stan.data)
+
+# bring in the previous estimaters from Lang et al. 2025
+estimates.2025 <- read.csv(file = "data\\gray_whale_calf_production_estimates_1994_2025.csv") %>%
+  mutate(Model = "Poisson")
+
+stan.out$abundance %>%
+  rename(LCL = Lower_95_CI,
+         UCL = Upper_95_CI) %>%
+  mutate(Model = "Negative Binomial") -> estimates.2026
+
+all.estimates <- rbind(estimates.2025, estimates.2026)
+
+p.abundance <- ggplot(all.estimates) +
+  geom_ribbon(aes(x = Year, ymin = LCL, ymax = UCL, fill = Model),
+              alpha = 0.3) +
+  geom_point(aes(x = Year, y = Mean, color = Model)) +
+  geom_path(aes(x = Year, y = Mean, color = Model),
+            linewidth = 1) +
+  theme(legend.position = "top")
+
+```
+
+From `r min(as.Date(data.2026.by.day$Date, format = "%Y-%m-%d")) %>% format("%d %B %Y")` to `r max(as.Date(data.2026.by.day$Date, format = "%Y-%m-%d")) %>% format("%d %B %Y")`, `r signif(sum(data.2026.by.day$Daily_Effort),3)` hours of survey effort were completed. Daily survey effort ranged from zero to `r signif(max(data.2026.by.day$Daily_Effort), 3)` hours. A total of `r sum(data.2026$Sightings)` gray whale mother-calf pairs were counted. The highest daily count was `r max(data.2026.by.day$Daily_Sightings)` pairs over `r signif(data.2026.by.day[data.2026.by.day$Daily_Sightings == max(data.2026.by.day$Daily_Sightings), "Daily_Effort"], 3)` effort hours on `r data.2026.by.day[data.2026.by.day$Daily_Sightings == max(data.2026.by.day$Daily_Sightings), "Date"] %>% pull() %>% format("%d %B %Y")`, while the day with the highest sighting rate (`r max(data.2026.by.day$Sightings_per_Effort, na.rm = TRUE) %>% signif(3)` pairs per effort hour) occurred on `r data.2026.by.day[which(data.2026.by.day$Sightings_per_Effort == max(data.2026.by.day$Sightings_per_Effort, na.rm = TRUE)), "Date"] %>% pull() %>% format("%d %B %Y")` (Figure \@ref(fig:Figure-daily-sightings)). The estimated number of mother-calf pairs during the 2026 migration season was `r signif(estimates.2026[estimates.2026$Year == 2026, "Mean"], 4)` (95%CI = `r signif(estimates.2026[estimates.2026$Year == 2026, "LCL"], 4)` - `r signif(estimates.2026[estimates.2026$Year == 2026, "UCL"], 4)`) (Table \@ref(tab:Table-nhats-v1), Figure \@ref(fig:Figure-Nhats)).
+
+## Model Diagnostics Summary
+
+The upgraded model structure was evaluated using 8,000 post-warmup MCMC draws across four independent chains. It indicated satisfactory convergence among MCMC draws and predictive performance, examined using Pareto-k statistics and posterior predictive check across the entire 1994–2026 time series:
+
+**Numerical Convergence:** Every global and structural parameter achieved $\hat{R} < 1.01$, indicating satisfactory chain mixing. Bulk and Tail Effective Sample Sizes ($\text{ESS} > 700$, Table x).
+
+```{r}
+global_summary
+```
+
+**Predictive Validity:** Leave-One-Out cross-validation conducted via the *loo* package indicated that `r signif((1 - sum(which(loo_nb_fixed$diagnostics$pareto_k > 0.7)))*100, 2)`% of the Pareto-$k$ diagnostic values were in the "good" zone ($k < 0.7$).
+
+**Posterior Predictive Checks (PPC):** Posterior simulations ($\text{ppc_bars}$) indicated that the model predicted the empirical right-skewed tail of the sighting data well, while a zero-proportion test verified that the negative binomial approach matched the observed zero-inflation profile of the field data (\~60% zeros).
+
+```{r ppc-bars}
+PPC.out$bars
+```
+
+```{r ppc-stats}
+PPC.out$stat
+```
+
+### Why the new estimates are lower than before
+
+There are two reasons for the estimates were generally lower in the new approach than the previous approach.
+
+#### Hierarchical Shrinkage (Partial Pooling)
+
+In the independent annual models, every year and every week was treated as an isolated data point. If observers had a single "lucky day" where weather was perfect and a large group of mother-calf pairs passed by all at once, a single-year model had to use the large value for estimating the mean passage rate ($\lambda_i$) for that week, which then scaled up the imputed counts for all the unsampled hours (e.g., nights, weekends) of that week.
+
+By tying the years and weeks together hierarchically, a shared seasonal profile ($\text{week_eff}$) and a shared annual variance ($\sigma_{year}$) were created.
+
+The model now looks at an isolated high-count spike and determine, "Historically, this week doesn't usually experience a spike this extreme. This was likely a random sampling fluke." The hierarchical structure shrinks those greater-than-expected, highly volatile weekly parameters back toward the global across-year average. Because of this "shrinkage," the new model provides estimates that are less than those from the previous approach.
+
+#### The Poisson vs. Negative Binomial Likelihood
+
+The second reason for the decline is because of change in the likelihood function (Poisson to Negative Binomial).
+
+In a standard Poisson distribution, the Variance must equal the Mean and it cannot accommodate high variance datasets well. Because a Poisson distribution has no independent parameter to adjust variance, the only way it could accommodate those high-count day spikes was to force its estimated mean rate upward. The Poisson mean became artificially increased to account for the high variance in the data. The Negative Binomial distribution decouples the mean from the variance using the overdispersion parameter ($\phi$). The model allows $\phi$ to absorb all the high-variance spikes and excess zeros, which lowers the mean tracking parameters ($\text{year_eff}$ and $\text{week_eff}$).
