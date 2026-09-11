@@ -35,7 +35,12 @@ rank.normalized.R.hat <- function(samples, params, MCMC.params){
   return(rhat.values)
 }
 
-# extract MCMC diagnostic statistics, including Rhat, loglikelihood, DIC, and LOOIC
+# MCMC.diag: Extracts MCMC diagnostic statistics, including Rhat, loglikelihood, 
+# DIC, and LOOIC from jags output. 
+# jm is the output from the jags function in the jagsUI package
+# MCMC.params is a named list with n.samples, n.burnin, and n.thin as list items
+# params.to.monitor is a vector of parameter names or a string of regular expression
+# 
 MCMC.diag <- function(jm, MCMC.params, params.to.monitor){
   n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
   
