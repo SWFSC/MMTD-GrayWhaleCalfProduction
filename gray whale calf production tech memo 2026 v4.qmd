@@ -79,8 +79,13 @@ Eastern North Pacific (ENP) gray whales (*Eschrichtius robustus*) migrate annual
 #   geom_point(aes(x = Year, y = Min.ESS.bulk), color = "red") +
 #   geom_point(aes(x = Year, y = Min.ESS.tail), color = "blue")
 
-fixed.year.stan.info <- readRDS("RData//GWCalfCount_Stan_nb_fixedyear_2026-07-09.info")
-fixed.year.stan <- readRDS("RData//GWCalfCount_Stan_nb_fixedyear_2026-07-09.rds")
+stan.fixed.year.run.date <- "2026-09-11"
+fixed.year.stan.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_",
+                                       stan.fixed.year.run.date, ".info"))
+
+fixed.year.stan <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_",
+                                  fixed.year.stan.info, ".rds"))
+
 all.years <- unique(fixed.year.stan.info$pre.stan.data$calendar_year)
 
 fixed.year.stan.info$pre.stan.data %>%
