@@ -2,9 +2,6 @@
 # This script is a modified version of "Running Individual Year Model.R"
 # I inherited it from Josh Stewart in early 2022.
 
-# In this version, all models can be run by specifying the model name (v1) at the beginning.
-
-
 rm(list=ls())
 library(jagsUI)
 library(tidyverse)
@@ -13,7 +10,7 @@ library(bayesplot)
 
 source("GrayWhaleCalfProduction_fcns.R")
 
-save.file <- F
+save.file <- T
 data.ext <- "v3" # Should be v3, which is the most up-to-date version
 model <- "v1" # v1 is fine. 
 
