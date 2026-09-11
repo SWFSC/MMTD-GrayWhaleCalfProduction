@@ -1,11 +1,11 @@
-#This includes updated functions from TE downloaded June 2026
-#Excel file definitions (that need to be updated each year) moved to "ExcelFileParams.R"
+
+# This includes updated functions from TE downloaded June 2026
+# Excel file definitions (that need to be updated each year) moved to "ExcelFileParams.R"
 library(rstan)
 library(loo)
 library(readxl)
 
 source("ExcelFileParams.R")
-
 
 # Compute the "rank-normalized R-hat" by Vehtari et al. (2021) from jagsUI
 # output.
@@ -68,20 +68,19 @@ MCMC.diag <- function(jm, MCMC.params, params.to.monitor){
   
 }
 
-
-
 # Some functions that were made by Claude:
 # 
 # =====================================================================
 # Fitted seasonal curves for the NB fixed-year and shifting-peak models
 # =====================================================================
 # Returns, for a chosen year, the fitted per-interval passage curve across
-# weeks with a credible ribbon (computed per posterior draw, then summarised).
+# weeks with a credible ribbon (computed per posterior draw, then summarized).
 #
 # Curve definition (both models), on the TRUE-passage scale:
 #     mu(y, w) = exp( year_eff[y] + shape(y, w) )
 # i.e. expected pairs per FULLY-OBSERVED 3-h interval, BEFORE detection/effort
 # thinning. (For the expected *observed* count at full effort, multiply by p_obs.)
+# 
 # The two models differ only in shape(y, w):
 #     fixed-year      : shape = week_eff[w]                 (discrete, shared)
 #     shifting-peak   : shape = amp * (g(w) - gbar[y])      (smooth, year-specific peak)
@@ -100,12 +99,13 @@ as_M <- function(draws) posterior::as_draws_matrix(draws)
 # ------------------------------------------------------------------
 # FIXED-YEAR: shape is the shared, discrete week_eff.
 # Evaluated at INTEGER weeks only (week_eff is a free per-week value; there is
-# no smooth interpolation in the model, so don't invent one).
+# no smooth interpolation in the model).
 # ------------------------------------------------------------------
 # M        : draws_matrix
 # year_i   : integer index matching year_eff[year_i]  (see year_index() helper)
 # n_weeks  : global number of weeks (dat$n_weeks); week_eff[1..n_weeks]
 # weeks    : integer weeks to evaluate (default 1:n_weeks)
+
 curve_fixedyear <- function(M, year_i, n_weeks, 
                             weeks = 1:n_weeks,
                             include_level = TRUE, 
@@ -313,7 +313,7 @@ stan.post.process.1year <- function(stan.fit, stan.data, pre.stan.data, out.file
 # Added by TE 2026-06-26
 # Using the stan output calf abudnance estimates are computed using posterior samples
 # The Stan model is GWCalfCount_nb.stan
-# The model is ran in calf_production_stan_2026_v4TE.R
+# The model is ran in calf_production_hierarchical_stan.R
 # =======================================================
 # POST-PROCESSING: Reconstruct True Counts via Conjugacy
 # =======================================================
@@ -457,9 +457,6 @@ PPC_counts <- function(stan.fit, stan.data, n.reps = 2000, save.fig = F){
            dpi = 600)
   }
 }
-
-# Removed compute.LOOIC as this can be done easily using the posterior package
-# Removed rank.normalized.R.hat as this can be done easily using the posterior package
 
 get.all.data <- function(sheet.name.inshore, sheet.name.offshore,
                          col.types.inshore, col.types.offshore,
