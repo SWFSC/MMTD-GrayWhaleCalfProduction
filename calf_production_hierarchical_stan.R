@@ -34,9 +34,10 @@ save.files <- TRUE #FALSE #
 
 data.ext <- "v3" # has to be v3
 
+model <- "nb"  
 #model <- "nb_fixedyear"
 #model <- "nb_shiftingpeak"
-model <- "nb_shiftingpeak_centered"
+#model <- "nb_shiftingpeak_centered"
 
 # Change this to use results from a previous run
 run.date <- Sys.Date() #"2026-07-09" #"2026-06-26"    
