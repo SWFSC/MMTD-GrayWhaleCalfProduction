@@ -23,9 +23,10 @@ The order of the data processing and analysis should be:
 5. Run *Combine inshore and offshore sightings.R* This file combines sightings and creates one file per year. Output files from this script is used to create the input object for the next script.
 6. Run *calf_production_single_year.R*. This script runs the single-year negative binomial model for all years. Each year is treated independently and no parameters are shared among years. This is comparable to the Jags approach except the observation model is negative binomial. 
 7. Run *calf_production_hierarchical_stan.R*. This script can run all models below. See Eguchi et al. (2026) for details. This step requires the following Stan code in the 'models' subdirectory:
-   1. *GWCalfCount_nb_fixedyear.stan*
-   2. *GWCalfCount_nb_shiftingpeak.stan*
-   3. *GWCalfCount_nb_shiftingpeak_centered.stan*
-   4. *GWCalfCount_nb_singleyear.stan*
-8. Edit *gray whale calf production tech memo 2026 v4.qmd* to create a new report. This is a Quarto document. If above analyses are completed, all necessary files should be in place (either in the data or RData subfolders).
+   1. *GWCalfCount_nb.stan*: A simple hierarchical model where total counts for each year come from a distribution (results in "shrunk" estimates of abundances)
+   2. *GWCalfCount_nb_fixedyear.stan*: Some parameters were shared among years but the abundance was not. The seasonal migration curve was assumed to be identical among years.
+   3. *GWCalfCount_nb_shiftingpeak_centered.stan*: Similar to the fixed-year model but the timing of the migration peak was allowed to vary among years
+   4. *GWCalfCount_nb_singleyear.stan*: The negative binomial model was applied to each year separately, as it was done in the previous approach by Stewart and Weller.
+   5. *GWCalfCount_nb_shiftingpeak.stan*
+8. Edit *gray whale calf production tech memo 2026 v4.qmd* to create a new report. This is a Quarto document. If the above analyses are completed, all necessary files should be in place (either in the data or RData subfolders).
 9. In the Quarto document, *reference.bib* is used to create citations and the literature cited section. Because it includes my reference library as of the time of creating the 2026 report, this file is too large for GitHub (approx. 7MB) and has not been uploaded. Your reference manager (e.g., Zotero, Mendeley, etc.) can create a .bib reference file. To facilitate formatting the literature cited section, two .csl files for Marine Mammal Science and Marine Ecology Progress Series are included. 
