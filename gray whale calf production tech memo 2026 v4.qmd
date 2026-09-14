@@ -70,7 +70,9 @@ save.fig.fcn <- function(fig, file.name, replace = F,
 
 ## Introduction
 
-Eastern North Pacific (ENP) gray whales (*Eschrichtius robustus*) migrate annually between foraging grounds in the Arctic and wintering grounds in Baja California (Rice and Wolman 1971). Females give birth in protected lagoons in Baja California Sur, Mexico, and migrate north with their calves in the spring of each year. Shore-based counts of female gray whales accompanying their calves (i.e., mother--calf pairs) have been conducted annually from the Piedras Blancas Light Station in central California since 1994. Survey methods were evaluated in detail at the outset of the study [@perryman2002] and have remained consistent since 1994 (Weller and Perryman 2019).
+Eastern North Pacific (ENP) gray whales (*Eschrichtius robustus*) migrate annually between foraging grounds in the Arctic and wintering areas in Baja California Sur, Mexico, where females give births (Rice and Wolman 1971). Females with calves migrate north in the spring of each year. To estimate ENP gray whale calf production, shore-based counts of female gray whales accompanying their calves (i.e., mother--calf pairs) have been conducted annually from the Piedras Blancas Light Station in central California since 1994. 
+
+Survey and data collection methods were evaluated in detail at the outset of the study [@perryman2002] and have remained largely consistent since then (Weller and Perryman 2019).
 
 ```{r data-summary, include=FALSE, echo=FALSE}
 # # The following file was created in the GrayWhaleCalfProduction project by TE
@@ -80,11 +82,14 @@ Eastern North Pacific (ENP) gray whales (*Eschrichtius robustus*) migrate annual
 #   geom_point(aes(x = Year, y = Min.ESS.tail), color = "blue")
 
 stan.fixed.year.run.date <- "2026-09-11"
+stan.single.year.run.date <- "2026-09-11"
+stan.shifting.peak.run.date <- "2026-09-11"
+stan.hierarchical.run.date <- "2026-09-14"
+
 fixed.year.stan.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_",
                                        stan.fixed.year.run.date, ".info"))
 
-fixed.year.stan <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_",
-                                  fixed.year.stan.info, ".rds"))
+fixed.year.stan <- readRDS(fixed.year.stan.info$out.filename)
 
 all.years <- unique(fixed.year.stan.info$pre.stan.data$calendar_year)
 
@@ -151,21 +156,23 @@ JAGS.Rhat.ESS.summary <- read_rds(file = "RData//Rhat_ESS_Summary_Jags2026.rds")
 
 ```
 
-In 2021, Stewart and Weller (2021) presented a new Bayesian modeling approach to estimate the annual calf production of ENP gray whales. Their approach accounted for uncertainty during unsampled periods (i.e., when there was no sampling effort; evenings, weekends, and bad weather days). In recent years, observed counts of mother--calf pairs have declined precipitously, resulting in numerical convergence issues. The model converged for all years through 2025, except for the 2026 data (max($\hat{R}$) = `r JAGS.Rhat.ESS.summary %>% filter(Year == 2026) %>% pull(Max.Rhat) %>% signif(3)`, min(bulk ESS) $\approx$ `r JAGS.Rhat.ESS.summary %>% filter(Year == 2026) %>% pull(Min.ESS.bulk) %>% signif(3)`). Here, we provide (a) details of an updated approach to accommodate the sparse counts of mother-calf pairs observed in recent years and (b) the abundance estimates for the entire 1994-2026 time series using the previous and new approaches.
+In 2021, Stewart and Weller (2021) presented a new Bayesian modeling approach to estimate the annual calf production of ENP gray whales. Their approach accounted for uncertainty during unsampled periods (i.e., when there was no sampling effort; e.g., nights, weekends, and periods of bad weather). In recent years, observed counts of mother--calf pairs have declined precipitously, resulting in numerical convergence issues. The Stewart and Weller (2021) model converged for all years through 2025, but not for the 2026 data (max($\hat{R}$) = `r JAGS.Rhat.ESS.summary %>% filter(Year == 2026) %>% pull(Max.Rhat) %>% signif(3)`, min(bulk ESS) $\approx$ `r JAGS.Rhat.ESS.summary %>% filter(Year == 2026) %>% pull(Min.ESS.bulk) %>% signif(3)`). Here, we provide (a) details of an updated approach to accommodate the sparse counts of mother-calf pairs observed in recent years and (b) calf production estimates for the entire 1994-2026 time series using the previous and new approaches.
 
 ## Data
 
-Data for this analysis were collected from 1994 to 2026 using standardized methods (Perryman et al. 2002, Weller and Perryman 2019, Stewart and Weller 2021)[^1]. Briefly, a rotating pair of observers conducted counts of mother--calf pairs from a shore station during a 12-hour watch period per day. Watches were terminated due to poor weather (e.g., rain or fog), poor visibility or rough sea conditions, frequently reducing the total daily effort below the maximum of 12 hours.
+Data for this analysis were collected from 1994 to 2026 using standardized methods (Perryman et al. 2002, Weller and Perryman 2019, Stewart and Weller 2021)[^1]. Briefly, a rotating pair of observers conducted counts of mother--calf pairs from a shore station during a 12-hour watch period per day. Watches were terminated due to poor weather (e.g., rain or fog), poor visibility or rough sea conditions, frequently reducing the total daily effort below the maximum of 12 hours. In recent years (2004, 2006–2024), surveys have generally been conducted five days per week. During the 2026 season, additional survey effort was allocated on some weekends when observers were available.
 
-[^1]: The annual survey was not conducted in 2020 due to COVID-19. In 2021, the survey was completed under COVID-related staffing restrictions, which included a three-person rather than a four-person observer rotation during some weeks to reduce the number of people in close proximity. During periods when the three-person rotation was in place, the maximum survey effort per day was limited to 9 hours rather than the typical 12 hours for a four-person rotation.
+From 1994-2024, one observer focused their watch on the inshore portion of the study area, primarily looking south from the watch platform, while the second observer focused on what was referred to as the offshore portion of the study area (see Perryman et al. 2002). Almost all mother-calf pairs (97.2%) were recorded in the inshore portion, and thus in 2025 the survey protocol was revised such that both observers focused on the inshore study area, which was expanded to include a small swathe of what was formerly the offshore area.
 
-The protocol for processing the raw data prior to analysis was similar to that in the previous analysis [@stewart_estimates_2021]. The data extraction method used to format the raw data prior to analysis was updated in 2023 to accommodate start times prior to 7:00 A.M. and to calculate effort more accurately when sighting conditions changed mid-shift (see [@lang_eastern_2024] for details). This updated protocol was applied to the entire dataset from 1994. Independent replicate counts from two different shore-based observation stations conducted over seven consecutive years (1994-2000) reported a detection probability of 0.889 (SE = 0.06375) (Perryman et al. 2002; $p_{obs} \sim Normal(0.889, 0.064)$). Annual survey effort (start date, end date, and total hours of observation) is provided in the Supplementary Material (@supptbl-alleffort).
+[^1]: The annual survey was not conducted in 2020 due to COVID-19. In 2021, the survey was completed under COVID-related staffing restrictions, which included a three-person rather than a four-person observer rotation during some weeks to reduce the number of people in close proximity. The three-person observer rotation has also been implemented on occasion in other years due to limitations in observer availability. During periods when the three-person rotation was in place, the maximum survey effort per day was limited to 9 hours rather than the typical 12 hours for a four-person rotation.
+
+The protocol for processing the raw data prior to analysis was similar to that in the previous analysis [@stewart_estimates_2021]. The data extraction method used to format the raw data prior to analysis was updated in 2023 to accommodate any start times before 7:00 A.M. and to calculate effort more accurately when sighting conditions changed mid-shift (see [@lang_eastern_2024] for details). This updated protocol was applied to the entire dataset from 1994. Independent replicate counts from two different shore-based observation stations conducted over seven consecutive years (1994-2000) reported a detection probability of 0.889 (SE = 0.06375) (Perryman et al. 2002; $p_{obs} \sim Normal(0.889, 0.064)$). Annual survey effort (start date, end date, and total hours of observation) is provided in the Supplementary Material (@supptbl-alleffort).
 
 ## Methods
 
-In this document, three approaches to analyzing the dataset are mentioned: (1) Perryman et al. (2002), (2) Stewart and Weller (2021), and (3) the new analysis (Eguchi et al. 2026).
+In this document, three approaches to analyzing the dataset are mentioned: (1) Perryman et al. (2002), (2) Stewart and Weller (2021), and (3) Eguchi et al. (2026), reported here.
 
-The following assumptions by Perryman et al. (2002) are maintained for the methods of Stewart and Weller (2021) and Eguchi et al. (2026): (a) the number of calves passing offshore and beyond the visual range of shore-based observers was negligible (supported by data from aerial surveys) and (b) the passage rates of mother--calf pairs were consistent between daytime and nighttime periods (based on recordings from infrared sensors).
+The following assumptions by Perryman et al. (2002) are maintained for the methods of Stewart and Weller (2021) and Eguchi et al. (2026): (a) the number of calves passing offshore and beyond the visual range of shore-based observers was negligible (supported by data from aerial surveys; Perryman et al. 2002) and (b) the passage rates of mother--calf pairs were consistent between daytime and nighttime periods (based on recordings from infrared sensors; Perryman et al. 2002).
 
 The framework developed by Stewart and Weller (2021) relied on an independent, single-year model utilizing a compound Poisson-Binomial likelihood structure. The model structure calculated the observed counts ($Obs_i$) within discrete 3-hour watch intervals $i$ as a binomial sampling process nested inside a weekly Poisson passage rate ($\lambda_{w}$):
 
@@ -173,9 +180,9 @@ $$Obs_{i} \sim \text{Binomial}(\text{True}_{i}, p_{i})$$
 
 $$\text{True}_{i} \sim \text{Poisson}(\lambda_{w[i]})$$
 
-While this framework more fully accounted for uncertainty during unsampled periods than the method by Perryman et al. (2002), it was not capable of computing the total number of mother--calf pairs ($\text{True}_{i}$) when extremely low numbers were observed across several weeks. The Poisson approach failed for the 2026 data for the following reason.
+While this framework more fully accounted for uncertainty during unsampled periods than the method by Perryman et al. (2002), it was not capable of computing the total number of mother--calf pairs ($\text{True}_{i}$) when extremely low numbers were observed across several weeks. The Poisson approach failed to work for the 2026 data for the following reason.
 
-The Poisson-Binomial approach estimated each calendar year independently using flat or vague priors on weekly passage rates ($\lambda_{w} \sim \text{Uniform}(0, 40)$). When the counts dropped to the extreme lows seen in 2025 and 2026, very few or no calves were detected in most weeks. For 2025, those few counts were observed in three weeks, whereas in 2026 they were spread across 7 weeks. Fitting the Poisson distributions to estimate weekly means became difficult for the 2026 data because there was insufficient information to bound the parameters. The posterior distributions for those weeks' passage rates ($\lambda_{w}$) flattened and their uncertainty increased to the point where the Markov chain Monte Carlo (MCMC) sampler could not reach convergence. Applying the Stewart and Weller (2021) model to the 2026 data resulted in posterior distributions of weekly means ranging from 3 to 12, with lower 95% credible limits that were virtually zero and upper credible limits of 15 to 38 -- values that are virtually identical to the prior distribution of $\lambda$. Fortuitously, the 17 whales observed in 2025 migrated in consecutive weeks (@fig-counts-2025-2026); otherwise, the estimation method would have failed then as well. Such sparse counts are likely to recur in the future if the population numbers remain low.
+The Poisson-Binomial approach estimated each calendar year independently using flat or vague priors on weekly passage rates ($\lambda_{w} \sim \text{Uniform}(0, 40)$). When the counts fell to the extreme lows seen in 2025 and 2026, very few or no calves were detected in most weeks. In 2025, those few counts were observed over three weeks, whereas in 2026 they were spread across 7 weeks. Fitting the Poisson distributions to estimate weekly means became difficult for the 2026 data because there was insufficient information to bound the parameters. The posterior distributions for those weeks' passage rates ($\lambda_{w}$) flattened and their uncertainty increased to the point where the Markov chain Monte Carlo (MCMC) sampler could not converge.  Applying the Stewart and Weller (2021) model to the 2026 data resulted in posterior distributions of weekly means ranging from 3 to 12, with lower 95% credible limits that were virtually zero and upper credible limits of 15 to 38 -- values that are virtually identical to the prior distribution of $\lambda$. Fortuitously, the 17 whales observed in 2025 migrated in consecutive weeks (@fig-counts-2025-2026); otherwise, the estimation method would have failed then as well. Such sparse counts could recur in the future if the population numbers remain low.
 
 ```{r previous-results, include=FALSE, echo=FALSE}
 # bring in the previous estimaters from Lang et al. 2025
@@ -252,7 +259,9 @@ phi.single.year <- list()
 phi.single.year.draws <- list()
 y <- 1
 for (y in 1:length(all.years)){
-  out. <- readRDS(paste0("RData//GWCalfCount_Stan_nb_singleyear_", all.years[y], "_2026-07-10.rds"))
+  out. <- readRDS(paste0("RData//GWCalfCount_Stan_nb_singleyear_", all.years[y], "_",
+                         stan.single.year.run.date, ".rds"))
+  
   phi.single.year[[y]] <- out.$summary("phi")
   phi.single.year.draws[[y]] <- posterior::as_draws_matrix(out.$draws("phi"))
 }
@@ -322,17 +331,18 @@ convergence.table <- data.frame(
 
 #ft.convergence.table <- flextable(convergence.table)
 
-shifting.peak.stan <- readRDS(
-  "RData//GWCalfCount_Stan_nb_shiftingpeak_centered_2026-07-09.rds")
+shifting.peak.stan <- readRDS(paste0(
+  "RData//GWCalfCount_Stan_nb_shiftingpeak_centered_",
+  stan.shifting.peak.run.date, ".rds"))
 
 single.run.time <- data.frame(Year = all.years, Run_Time = NA, Run_Time_2 = NA)
 for (k in 1:length(all.years)){
   single.stan.info <- readRDS(
     paste0("RData//GWCalfCount_Stan_nb_singleyear_", all.years[k],
-           "_2026-07-10.info"))
+           "_", stan.single.year.run.date, ".info"))
   single.stan <- readRDS(
     paste0("RData//GWCalfCount_Stan_nb_singleyear_", all.years[k],
-           "_2026-07-10.rds"))
+           "_", stan.single.year.run.date, ".rds"))
   single.run.time[k, "Run_Time"] <- as.numeric(single.stan$time()$total)
   single.run.time[k, "Run_Time_2"] <- single.stan.info$Run.time
 }
@@ -532,7 +542,8 @@ The fixed-year model produced similar estimates to the single-year model (@suppf
 ```{r shfting-year, include=FALSE, echo=FALSE, message=FALSE}
 
 ShiftingPeak.out <- readRDS(
-  file = "RData//GWCalfCount_stan_nb_shiftingpeak_centered_2026-07-09.rds")
+  file = paste0("RData//GWCalfCount_stan_nb_shiftingpeak_centered_",
+  stan.shifting.peak.run.date, ".rds"))
 
 ShiftingPeak.peak.summary <- ShiftingPeak.out$summary(
   c("peak_week"),
