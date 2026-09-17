@@ -168,7 +168,7 @@ curve_shiftpeak <- function(M, year_i,
 }
 
 # ------------------------------------------------------------------
-# Thin dispatcher, so you can call one function with model = "..."
+# call one function with model = "..."
 # ------------------------------------------------------------------
 season_curve <- function(M, 
                          Model = c("fixedyear", "shiftingpeak"),
