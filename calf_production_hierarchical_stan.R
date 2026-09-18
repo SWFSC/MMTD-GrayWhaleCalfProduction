@@ -34,16 +34,17 @@ save.files <- TRUE #FALSE #
 
 data.ext <- "v3" # has to be v3
 
-model <- "nb"  
+model <- "nb_randomyear"  
 #model <- "nb_fixedyear"
 #model <- "nb_shiftingpeak"
 #model <- "nb_shiftingpeak_centered"
 
 # Change this to use results from a previous run
-run.date <- Sys.Date() #"2026-07-09" #"2026-06-26"    
+run.date <- Sys.Date() #"2026-09-14" 
 
 data.path <- paste0("data//Formatted Annual Data Combined ", 
                     data.ext, "//")
+
 FILES <- list.files(path = data.path,
                     pattern = paste0(data.ext, ".csv"))
 
