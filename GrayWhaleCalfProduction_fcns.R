@@ -410,8 +410,9 @@ stan.post.process <- function(stan.fit, stan.data, pre.stan.data, out.file.name,
 }
 
 # Added by TE 2026-06-26
-# Posterior Prdictive Check of the Stan output from GWCalfCount_nb.stan
-# Use calf_production_hierarchical_stan.R to run the Stan model. 
+# Posterior Prdictive Check of the Stan output from GWCalfCount_nb_y.stan, where
+# y is a specific model: fixedyear, randomyear, shiftingpeak_centered.
+# Use calf_production_hierarchical_stan.R to run a Stan model. 
 PPC_counts <- function(stan.fit, stan.data, n.reps = 2000, save.fig = F){
   # 1. Extract the simulated replication matrix [8000 iterations x 17008 columns]
   y_rep <- stan.fit$draws("count_rep", format = "matrix")
