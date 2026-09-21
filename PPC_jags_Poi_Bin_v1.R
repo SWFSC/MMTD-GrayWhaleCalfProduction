@@ -7,6 +7,7 @@ rm(list = ls())
 library(tidyverse)
 library(posterior)
 library(bayesplot)
+library(ggplot2)
 
 data.path <- "data\\Formatted Annual Data Combined v3\\"
 FILES <- list.files(path = data.path,
@@ -98,8 +99,6 @@ obs_prop0_all  <- mean(y_all == 0)
 prop0_rep_all  <- rowMeans(yrep_all == 0)
 bayes_p_pooled <- mean(prop0_rep_all >= obs_prop0_all)
 
-library(ggplot2)
-
 # Poisson pooled zero-proportions (from ppc.out assembly)
 poi_prop0 <- prop0_rep_all               # rowMeans(yrep_all == 0)
 poi_obs   <- obs_prop0_all               # mean(y_all == 0)
@@ -112,7 +111,8 @@ stan.fixed.year.run.date <- "2026-09-11"
 fixed.year.stan.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_",
                                        stan.fixed.year.run.date, ".info"))
 fixed.year.stan.info$pre.stan.data %>%
-  filter(calendar_year == 2026) %>%
+  filter(calendar_year == 2026,
+         effort_hours > 0) %>%
   mutate(count_per_hr = count_obs/effort_hours) %>%
   group_by(calendar_year) %>%
   mutate(cumu_effort = cumsum(effort_hours)) %>%
@@ -121,53 +121,50 @@ fixed.year.stan.info$pre.stan.data %>%
 fixedyear.ppc <- readRDS("RData//PPC_out_nb_fixedyear.rds")
 
 # Remove the 2026 data:
-y.rep.1994to2025 <- fixedyear.ppc$y.rep[,1:(dim(fixedyear.ppc$y.rep)[2] - dim(data.2026)[2])]
-y.obs.1994to2025 <- fixedyear.ppc$y.obs[1:(dim(fixedyear.ppc$y.rep)[2] - dim(data.2026)[2])]
+y.rep.1994to2025 <- fixedyear.ppc$y.rep[,1:(dim(fixedyear.ppc$y.rep)[2] - dim(data.2026)[1])]
+y.obs.1994to2025 <- fixedyear.ppc$y.obs[1:(dim(fixedyear.ppc$y.rep)[2] - dim(data.2026)[1])]
 
-nb_prop0_1994to2025 <- rowMeans(y.rep.1994to2025)
+nb_prop0_1994to2025 <- rowMeans(y.rep.1994to2025 == 0)
 nb_obs_1994to2025 <- mean(y.obs.1994to2025 == 0)
 
 ## START HERE. POISSON AND NEGATIVE BINOMIAL SHOULD HAVE THE SAME OBSERVED PROPORTIONS OF
 ## ZEROS. THEY WEREN'T... BECAUSE FOR STAN, OFFSHORE AND INSHORE DATA WERE USED WHEREAS
 ## FOR JAGS, ONLY INSHORE WAS USED. THIS IS FIXED 2026-09-18
 
-
-
-
 # Proportion of zeros 
-prop.zeros.obs <- mean(fixedyear.ppc$y.obs == 0)
-prop.zeros.obs.1994to2025 <- prop.zeros.obs[1:(dim(fixedyear.ppc$y.rep)[2] - dim(data.2026)[2])]
-
-prob.prop.zeros <- length(which(prop.zeros.1994to2025 > prop.zeros.obs.1994to2025))/length(prop.zeros.1994to2025)
-
-prop.zeros.df <- data.frame(prop_zeros = prop.zeros,
-                            observed = prop.zeros.obs,
-                            data = "All")
-
-prop.zeros.q95 <- quantile(prop.zeros, 0.95)
-
-
-
+# prop.zeros.obs <- mean(fixedyear.ppc$y.obs == 0)
+# prop.zeros.obs.1994to2025 <- prop.zeros.obs[1:(dim(fixedyear.ppc$y.rep)[2] - dim(data.2026)[1])]
+# 
+# prob.prop.zeros <- length(which(prop.zeros.1994to2025 > prop.zeros.obs.1994to2025))/length(prop.zeros.1994to2025)
+# 
+# prop.zeros.df <- data.frame(prop_zeros = prop.zeros,
+#                             observed = prop.zeros.obs,
+#                             data = "All")
+# 
+# prop.zeros.q95 <- quantile(prop.zeros, 0.95)
+# 
 
 reps <- rbind(
   data.frame(model = "Poisson-Binomial", prop0 = poi_prop0),
-  data.frame(model = "Negative Binomial", prop0 = nb_prop0)
-)
-obs <- data.frame(
-  model = c("Poisson-Binomial", "Negative Binomial"),
-  obs   = c(poi_obs, nb_obs),
-  bayes_p = c(mean(poi_prop0 >= poi_obs), mean(nb_prop0 >= nb_obs))
+  data.frame(model = "Negative Binomial", prop0 = nb_prop0_1994to2025)
 )
 
-reps <- data.frame(model = "Poisson-Binomial", prop0 = poi_prop0)
-obs <- data.frame(model = "Poisson-Binomial",
-                  obs = poi_obs,
-                  bayes_p = poi_prop0 >= poi_obs)
+obs <- data.frame(
+  model = c("Poisson-Binomial", "Negative Binomial"),
+  obs   = c(poi_obs, nb_obs_1994to2025),
+  bayes_p = c(mean(poi_prop0 >= poi_obs), mean(nb_prop0_1994to2025 >= nb_obs_1994to2025))
+)
+
+# reps <- data.frame(model = "Poisson-Binomial", prop0 = poi_prop0)
+# obs <- data.frame(model = "Poisson-Binomial",
+#                   obs = poi_obs,
+#                   bayes_p = poi_prop0 >= poi_obs)
 
 ggplot(reps, aes(prop0)) +
   geom_histogram(bins = 40) +
   geom_vline(data = obs, aes(xintercept = obs), linewidth = 1) +
-  #facet_wrap(~ model, scales = "free_x") +
+  #facet_wrap(~model, scales = "free_x")
+  facet_grid(rows = vars(model)) +
   labs(x = "Proportion of zeros", y = "Count") +
   theme_bw()
 
