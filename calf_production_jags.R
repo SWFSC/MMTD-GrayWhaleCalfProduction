@@ -109,6 +109,9 @@ for(i in 1:length(FILES)){
     # params.to.monitor is a string of regular expression.
     # e.g., "^BF\\.Fixed|^K\\["
     params <- "^count\\.true\\[|^lambda\\[|^p\\.obs\\.corr\\[|^p\\.obs|^Total\\.Calves\\["
+    
+    # The following function still exists in GrayWhaleCalfProduction_fcns.R but
+    # it's easier to use the posterior package. 
     jm.MCMC <- MCMC.diag(jm = jm, 
                          MCMC.params = MCMC.params,
                          params.to.monitor = params)
