@@ -1241,8 +1241,6 @@ find.effort.2 <- function(x){
               shift.df = shift.df))
 }
 
-# Removed MCMC.diag because they can be done easily with the posterior package
-
 # Function to convert character time (e.g., 1349) to minutes from 
 # a particular start time of the day (e.g., 0700). Default is midnight (0000)
 # Use as char_time2min(x, origin = "0000"). 
