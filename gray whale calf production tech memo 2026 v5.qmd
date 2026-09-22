@@ -66,7 +66,6 @@ save.fig.fcn <- function(fig, file.name, replace = F,
   
 }
 
-
 fixedyear.estimates <- read.csv("data//all_estimates_nb_fixedyear.csv") %>%
   select(-X) %>%
   rename(LCL = Lower_95_CI,
@@ -193,7 +192,9 @@ While this framework more fully accounted for uncertainty during unsampled perio
 
 ### The Poisson-Binomial Limitations
 
-The Poisson-Binomial approach estimated each calendar year independently using flat or vague priors on weekly passage rates ($\lambda_{w} \sim \text{Uniform}(0, 40)$). When the counts fell to the extreme lows seen in 2025 and 2026, very few or no calves were detected in most weeks. In 2025, those few counts were observed over three weeks, whereas in 2026 they were spread across 7 weeks. Fitting the Poisson distributions to estimate weekly means became difficult for the 2026 data because there was insufficient information to bound the parameters. A week with no sightings identifies its weekly rate near zero, and a week with several sightings identifies its rate well; but a week with only one or two sightings over ~50 hours of effort can be neither - the effort--corrected rate is essentially unconstrained by one or two events. In 2025 the sightings were concentrated in three weeks, so the remaining weeks were well--identified zeros; in 2026 the same number of pairs was distributed across seven weeks, producing several simultaneously weakly--identified weekly rates that the sampler could not resolve. The posterior distributions for those weeks' passage rates ($\lambda_{w}$) flattened and their uncertainty increased to the point where the Markov chain Monte Carlo (MCMC) sampler could not converge. Applying the Stewart and Weller (2021) model to the 2026 data resulted in posterior distributions of weekly means ranging from 3 to 12, with lower 95% credible limits that were virtually zero and upper credible limits of 15 to 38 -- values that are virtually identical to the prior distribution of $\lambda$. Fortuitously, the 17 whales observed in 2025 migrated in consecutive weeks (@fig-counts-2025-2026); otherwise, the estimation method would have failed then as well. Such sparse counts could recur in the future if the population numbers remain low.
+The Poisson-Binomial approach estimated each calendar year independently using flat or vague priors on weekly passage rates ($\lambda_{w} \sim \text{Uniform}(0, 40)$). When the counts fell to the extreme lows seen in 2025 and 2026, very few or no calves were detected in most weeks. In 2025, those few counts were observed over three weeks, whereas in 2026 they were spread across 7 weeks. Fitting the Poisson distributions to estimate weekly means became difficult for the 2026 data because there was insufficient information to bound the parameters. A week with no sightings identifies its weekly rate near zero, and a week with several sightings identifies its rate well; but a week with only one or two sightings over ~50 hours of effort can be neither - the effort--corrected rate is essentially unconstrained by one or two events. In 2025 the sightings were concentrated in three weeks, so the remaining weeks were well--identified zeros; in 2026 the same number of pairs was distributed across seven weeks, producing several simultaneously weakly--identified weekly rates that the sampler could not resolve. The posterior distributions for those weeks' passage rates ($\lambda_{w}$) flattened and their uncertainty increased to the point where the Markov chain Monte Carlo (MCMC) sampler could not converge. Applying the Stewart and Weller (2021) model to the 2026 data resulted in posterior distributions of weekly means ranging from 3 to 12, with lower 95% credible limits that were virtually zero and upper credible limits of 15 to 38 -- values that are virtually identical to the prior distribution of $\lambda$. Fortuitously, the 17 whales observed in 2025 migrated in consecutive weeks (@fig-counts-2025-2026); otherwise, the estimation method would have failed then as well. Such sparse counts could recur in the future if the population numbers remain low. 
+
+To elucidate this problem, a sensitivity analysis was conducted to determine effects of such spread of low counts on the model convergence. The total number of observed mother--calf pairs in 2026 (n = `r effort.by.year %>% filter(Year == 2026) %>% pull(Counts)`) were distributed over a 9-week period, ranging from 1 to 9 weeks, starting from week 5 (the middle of the sampling period). For example, the first set contained all 26 sightings in Week 5. For the second set, 26 sightings were distributed between weeks 4 and 5, and so on. The numbers of sightings among weeks were randomly distributed using the *sample* function in R. Within each week, sightings were distributed according to the true effort hours from 2026 and using a multinomial distribution with proportional effort for the week (i.e., effort/sum(all effort)). The Poisson--Binomial and Negative Binomial (described below) models were fitted to the simulated count data to determine whether or not the MCMC was converged and reliable estimates were obtained using the rank-normalized Rhat statistic and tail- and bulk-ESS values. The same process was repeated 100 times to obtain the variability of convergence at each spread (i.e., one week to 9 weeks).  
 
 ```{r previous-results, include=FALSE, echo=FALSE}
 # bring in the previous estimaters from Lang et al. 2025
@@ -374,13 +375,8 @@ The single-year, fixed-year, and fixed-year shifting-peak models fit to the data
 
 The Negative Binomial model overcame the convergence issue found in the Poisson-Binomial model through its dispersion parameter ($\phi$). Under the Poisson--Binomial model, a week with only one or two sightings must be explained entirely by its weekly rate, which those few counts cannot identify; the posterior then flattens toward the prior. The Negative Binomial model instead attributes such week-to-week variability to overdispersion ($\phi$), so the model no longer requires each sparse week's mean to be sharply identified in order to fit the data. Consequently, the single-year Negative Binomial model converged for 2026 despite the diffuse counts, without sharing information across years.
 
-<!-- ```{r single-year-comparison, echo=FALSE, include=FALSE} -->
+The sensitivity analysis indicated that the Poisson-Binomial model started to fail (i.e., showing lack of convergence) when `r ffort.by.year %>% filter(Year == 2026) %>% pull(Counts)` counts were distributed over 5-6 weeks. 
 
-<!-- single.year.df %>% -->
-
-<!--   mutate(change.mean = (Mean_POI - Mean_NB)/Mean_POI) -> single.year.df -->
-
-<!-- ``` -->
 
 ```{r find-means, echo=FALSE, message=FALSE, include=FALSE}
 mean.POI.2025 <- estimates.2026.df %>%
