@@ -1693,6 +1693,19 @@ find.sightings.dif <- function(Y, daily.summary.list, out.list){
               raw.data = raw.data.all))  
 }
 
+# function to save figures 
+save.fig.fcn <- function(fig, file.name, replace = F, 
+                         dpi = dpi.set, device = "png",
+                         height = 3, width = 3, units = "in",
+                         bg = "white"){
+  if (isTRUE(replace) | (!isTRUE(replace) & !file.exists(file.name)))
+    ggsave(fig, 
+           filename = file.name, 
+           dpi = dpi, device = device,
+           height = height, width = width, units = units,
+           bg = bg)
+  
+}
 
 
 
