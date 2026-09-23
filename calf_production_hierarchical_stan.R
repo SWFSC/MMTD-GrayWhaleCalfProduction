@@ -190,6 +190,8 @@ if (model == "nb" | model == "nb_fixedyear"){
   
 }
 
+# Using the results of MCMC, abundance is "simulated" in the following 
+# function. 
 stan.out <- stan.post.process(stan.fit = fit_, 
                               pre.stan.data = prepped_data_clean,
                               stan.data = stan_data, 
