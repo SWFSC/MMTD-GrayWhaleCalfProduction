@@ -208,7 +208,7 @@ p.rhat <- results_df %>%
   geom_hline(yintercept = rhat_cut, linetype = 2) +
   geom_line(linewidth = 0.8) + geom_point(size = 2) +
   scale_x_continuous(breaks = all.weeks) +
-  scale_y_log10() +
+  #scale_y_log10() +
   labs(x = "Number of weeks the counts were spread across",
        y = expression("Median max " * hat(R)),
        title = "Convergence diagnostic vs count spread") +
