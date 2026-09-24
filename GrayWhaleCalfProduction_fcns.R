@@ -109,7 +109,7 @@ as_M <- function(draws) posterior::as_draws_matrix(draws)
 curve_fixedyear <- function(M, year_i, n_weeks, 
                             weeks = 1:n_weeks,
                             include_level = TRUE, 
-                            probs = c(0.05, 0.5, 0.95)) {
+                            probs = c(0.025, 0.5, 0.975)) {
   ye <- if (include_level) 
     as.numeric(M[, sprintf("year_eff[%d]", year_i)]) else 0
   
@@ -141,7 +141,7 @@ curve_shiftpeak <- function(M, year_i,
                             n_weeks, 
                             grid = seq(1, n_weeks, by = 0.1),
                             include_level = TRUE, 
-                            probs = c(0.05, 0.5, 0.95)) {
+                            probs = c(0.025, 0.5, 0.975)) {
   ye   <- if (include_level) 
     as.numeric(M[, sprintf("year_eff[%d]", year_i)]) else 0
   amp  <- as.numeric(M[, "amp"])
@@ -410,8 +410,9 @@ stan.post.process <- function(stan.fit, stan.data, pre.stan.data, out.file.name,
 }
 
 # Added by TE 2026-06-26
-# Posterior Prdictive Check of the Stan output from GWCalfCount_nb.stan
-# Use calf_production_hierarchical_stan.R to run the Stan model. 
+# Posterior Prdictive Check of the Stan output from GWCalfCount_nb_y.stan, where
+# y is a specific model: fixedyear, randomyear, shiftingpeak_centered.
+# Use calf_production_hierarchical_stan.R to run a Stan model. 
 PPC_counts <- function(stan.fit, stan.data, n.reps = 2000, save.fig = F){
   # 1. Extract the simulated replication matrix [8000 iterations x 17008 columns]
   y_rep <- stan.fit$draws("count_rep", format = "matrix")
@@ -1240,8 +1241,6 @@ find.effort.2 <- function(x){
               shift.df = shift.df))
 }
 
-# Removed MCMC.diag because they can be done easily with the posterior package
-
 # Function to convert character time (e.g., 1349) to minutes from 
 # a particular start time of the day (e.g., 0700). Default is midnight (0000)
 # Use as char_time2min(x, origin = "0000"). 
@@ -1694,6 +1693,19 @@ find.sightings.dif <- function(Y, daily.summary.list, out.list){
               raw.data = raw.data.all))  
 }
 
+# function to save figures 
+save.fig.fcn <- function(fig, file.name, replace = F, 
+                         dpi = dpi.set, device = "png",
+                         height = 3, width = 3, units = "in",
+                         bg = "white"){
+  if (isTRUE(replace) | (!isTRUE(replace) & !file.exists(file.name)))
+    ggsave(fig, 
+           filename = file.name, 
+           dpi = dpi, device = device,
+           height = height, width = width, units = units,
+           bg = bg)
+  
+}
 
 
 

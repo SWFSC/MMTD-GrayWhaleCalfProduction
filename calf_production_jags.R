@@ -14,18 +14,23 @@ save.file <- T
 data.ext <- "v3" # Should be v3, which is the most up-to-date version
 model <- "v1" # v1 is fine. 
 
-if (data.ext == "v1"){
-  data.path <- "data\\Formatted Annual Data\\"
-  FILES <- list.files(path = data.path, 
-                      pattern = "Formatted.csv")
-  
-} else {
-  data.path <- paste0("data\\Formatted Annual Data ", data.ext, "\\")
-  FILES <- list.files(path = data.path,
-                      pattern = paste0("Formatted_inshore_", data.ext, ".csv"))
-  
-}
+# if (data.ext == "v1"){
+#   data.path <- "data\\Formatted Annual Data\\"
+#   FILES <- list.files(path = data.path, 
+#                       pattern = "Formatted.csv")
+#   
+# } else {
+#   data.path <- paste0("data\\Formatted Annual Data ", data.ext, "\\")
+#   FILES <- list.files(path = data.path,
+#                       pattern = paste0("Formatted_inshore_", data.ext, ".csv"))
+#   
+# }
 
+data.path <- paste0("data//Formatted Annual Data Combined ", 
+                    data.ext, "//")
+
+FILES <- list.files(path = data.path,
+                    pattern = paste0(data.ext, ".csv"))
 
 MCMC.params <- list(n.samples = 100000,
                     n.thin = 100,
@@ -47,12 +52,14 @@ count.obs <- effort <- week <- n.obs <- n.weeks <- list()
 years <- vector(mode = "numeric", length = length(FILES))
 jm.out <- list()
 for(i in 1:length(FILES)){
-  if (data.ext == "v1"){
-    years[i] <- as.numeric(str_split(FILES[i], " Formatted.csv")[[1]][1])
-  } else {
-    years[i] <- as.numeric(str_split(FILES[i], " Formatted_inshore")[[1]][1])
-    
-  }
+  # if (data.ext == "v1"){
+  #   years[i] <- as.numeric(str_split(FILES[i], " Formatted.csv")[[1]][1])
+  # } else {
+  #   years[i] <- as.numeric(str_split(FILES[i], " Formatted_inshore")[[1]][1])
+  #   
+  # }
+  # 
+  years[i] <- as.numeric(str_split(FILES[i], " Formatted_combined_v3.csv")[[1]][1]) 
   
   out.file.name <- paste0("RData\\calf_estimates_", data.ext,
                           "_M", model, "_", years[i], ".rds") 
@@ -102,6 +109,9 @@ for(i in 1:length(FILES)){
     # params.to.monitor is a string of regular expression.
     # e.g., "^BF\\.Fixed|^K\\["
     params <- "^count\\.true\\[|^lambda\\[|^p\\.obs\\.corr\\[|^p\\.obs|^Total\\.Calves\\["
+    
+    # The following function still exists in GrayWhaleCalfProduction_fcns.R but
+    # it's easier to use the posterior package. 
     jm.MCMC <- MCMC.diag(jm = jm, 
                          MCMC.params = MCMC.params,
                          params.to.monitor = params)
