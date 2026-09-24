@@ -109,7 +109,7 @@ as_M <- function(draws) posterior::as_draws_matrix(draws)
 curve_fixedyear <- function(M, year_i, n_weeks, 
                             weeks = 1:n_weeks,
                             include_level = TRUE, 
-                            probs = c(0.05, 0.5, 0.95)) {
+                            probs = c(0.025, 0.5, 0.975)) {
   ye <- if (include_level) 
     as.numeric(M[, sprintf("year_eff[%d]", year_i)]) else 0
   
@@ -141,7 +141,7 @@ curve_shiftpeak <- function(M, year_i,
                             n_weeks, 
                             grid = seq(1, n_weeks, by = 0.1),
                             include_level = TRUE, 
-                            probs = c(0.05, 0.5, 0.95)) {
+                            probs = c(0.025, 0.5, 0.975)) {
   ye   <- if (include_level) 
     as.numeric(M[, sprintf("year_eff[%d]", year_i)]) else 0
   amp  <- as.numeric(M[, "amp"])
