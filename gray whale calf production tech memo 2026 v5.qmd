@@ -45,7 +45,7 @@ source("GrayWhaleCalfProduction_fcns.R")
 flextable::use_flextable_qmd()
 
 # Set it FALSE, once all figures are produced. 
-save.fig <- TRUE #FALSE # 
+save.fig <- FALSE #TRUE # 
 
 # flextable defaults
 set_flextable_defaults(font.size = 10,
@@ -616,11 +616,23 @@ for (k in 1:length(all.years)){
 
 season.curve.df <- do.call(rbind, season.curve)
 
-p.season.curve <- ggplot(season.curve.df) +
-  geom_path(aes(x = week, y = median, color = Model)) +
-  geom_ribbon(aes(x = week, ymin = lower, 
+# Add weekly count data to the season curve somehow, request by J. Stewart
+count.data %>%
+  group_by(calendar_year, week_num) %>%
+  summarize(effort = sum(effort_hours),
+            count = sum(count_obs)) %>%
+  mutate(count.per.hr = count/effort) %>%
+  rename(Year = calendar_year) -> weekly.count.data
+
+p.season.curve <- ggplot() +
+  geom_path(data = season.curve.df,
+            aes(x = week, y = median, color = Model)) +
+  geom_ribbon(data = season.curve.df,
+              aes(x = week, ymin = lower, 
                   ymax = upper, fill = Model),
               alpha = 0.5) +
+  geom_point(data = weekly.count.data,
+             aes(x = week_num, y = count.per.hr)) +
   facet_wrap(~ Year, scales = "free_y") +
   ylab("Median") + xlab("Week Index") +
   theme_bw() +
@@ -888,7 +900,7 @@ For the "level" parameter ($\theta_y$), each year is treated independently rathe
 
 $$\theta_y \sim \mathcal{N}(0,\,5)\ \ (\text{fixed-year})$$ {#eq-fixed-year-level}
 
-$$\theta_y \sim \mathcal{N}(\mu_\theta,\,\sigma_\theta)\ \ \text{(random year — shrinks levels)}$$ {#eq-randomyear_level}
+$$\theta_y \sim \mathcal{N}(\mu_\theta,\,\sigma_\theta)\ \ \text{(random-year — shrinks levels)}$$ {#eq-randomyear_level}
 
 With the joint posterior distribution of $\lambda$ and $\phi$, the effort-corrected detection probability for the watch interval $i$:
 
@@ -906,7 +918,7 @@ $$\lambda_{i} \mid c_{i} \;\sim\; \mathrm{Gamma}\!\Big(\phi + c_{i},\ \tfrac{\ph
 
 $$T_{i} = c_{i} + \mathrm{missed}_{i},\ \ \mathrm{missed}_{i}\mid\lambda_{i} \sim \mathrm{Poisson}\!\big(\lambda_{i}(1-p_{i})\big)$$ {#eq-recon}
 
-For zero-effort intervals (i.e., $p_{i}=0$), $\lambda_{i}$ is drawn from @eq-lambda, and $T_{i}$ is imputed as $\mathrm{Poisson}(\lambda_{i})$ (@eq-recon). Total seasonal abundance for the year $y$ is calculated as $N_y=\sum_{i:\,y[i]=y} T_i$ simulated from these posterior draws.
+For zero-effort intervals (i.e., $p_{i}=0$), $\lambda_{i}$ is drawn from @eq-lambda, and $T_{i}$ is imputed as the sum of observed counts ($c_i$) and missed counts ($\mathrm{Poisson}(\lambda_{i}(1-p_i))$, @eq-recon). Total seasonal abundance for the year $y$ is calculated as $N_y=\sum_{i:\,y[i]=y} T_i$ simulated from these posterior draws.
 
 The fixed-year model assumes that the seasonal migration curve is identical among years ($s_w$, @eq-shape) so that each year's curve differs only in its level ($\theta_y$). This assumption allows years with sparse data to borrow the migration shape from the full time series, but it also constrains every year to peak in the same week. To evaluate the sensitivity of the abundance estimates to this constraint, we fitted an alternative model in which the timing of the peak was allowed to vary among years. Rather than estimating a separate set of $W$ weekly deviations for each year --- which would be unidentifiable in years with few sightings --- the seasonal curve was described by a parametric pulse with three parameters: an amplitude ($A$), a width ($\tau$), and a peak week ($\pi_y$). Only the peak week varied among years; the amplitude and width were shared across the time series, and the annual level ($\theta_y$) remained independent among years as in @eq-fixed-year-level. This model is referred to as the NB fixed-year shifting-peak (also simply shifting-peak) model.
 
@@ -1120,7 +1132,7 @@ knitr::include_graphics(paste0("figures//MCMC_breakdown.png"))
 
 ```
 
-Proportion of the Poisson-Binomial model that failed to converge when `r effort.by.year %>% filter(Year == 2026) %>% pull(Counts)` sightings of mother-calf pairs were artificially distributed over one to nine weeks starting at week 5 (the middle of the 9-week period). Non-convergence was defined by either rank-normalized Rhat \> 1.01 or tail/bulk ESS was \< 400. For each set of simulated number of sightings (i.e., week 1 through 9), 100 replicates were created to compute the proportion at each set.
+Proportion of the Poisson-Binomial model that failed to converge when `r effort.by.year %>% filter(Year == 2026) %>% pull(Counts)` sightings of mother-calf pairs were artificially distributed over one to nine weeks starting at week 5 (the mid point of the 9-week period). Non-convergence was defined by either rank-normalized Rhat \> 1.01 or tail/bulk ESS was \< 400. For each set of simulated numbers of sightings (i.e., weeks 1 through 9), 100 replicates were created to compute the proportion for each set.
 :::
 
 \newpage
@@ -1165,7 +1177,7 @@ knitr::include_graphics(paste0("figures//fixed_year_phi.png"))
 
 ```
 
-Posterior distribution of the dispersion parameter of the Negative Binomial fixed-year model.
+Posterior distribution of the dispersion parameter ($\phi$) of the Negative Binomial fixed-year model.
 :::
 
 \newpage
