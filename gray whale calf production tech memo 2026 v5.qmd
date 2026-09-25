@@ -45,7 +45,7 @@ source("GrayWhaleCalfProduction_fcns.R")
 flextable::use_flextable_qmd()
 
 # Set it FALSE, once all figures are produced. 
-save.fig <- FALSE #TRUE # 
+save.fig <- TRUE # FALSE #
 
 # flextable defaults
 set_flextable_defaults(font.size = 10,
@@ -618,10 +618,11 @@ season.curve.df <- do.call(rbind, season.curve)
 
 # Add weekly count data to the season curve somehow, request by J. Stewart
 count.data %>%
-  group_by(calendar_year, week_num) %>%
+  group_by(calendar_year, iso_wk) %>%
   summarize(effort = sum(effort_hours),
-            count = sum(count_obs)) %>%
-  mutate(count.per.hr = count/effort) %>%
+            count = sum(count_obs)) %>% #-> tmp
+  mutate(count.adjusted = count/(0.889 * effort/3),
+         week = iso_wk - min(iso_wk) + 1) %>%
   rename(Year = calendar_year) -> weekly.count.data
 
 p.season.curve <- ggplot() +
@@ -632,7 +633,7 @@ p.season.curve <- ggplot() +
                   ymax = upper, fill = Model),
               alpha = 0.5) +
   geom_point(data = weekly.count.data,
-             aes(x = week_num, y = count.per.hr)) +
+             aes(x = week, y = count.adjusted)) +
   facet_wrap(~ Year, scales = "free_y") +
   ylab("Median") + xlab("Week Index") +
   theme_bw() +
@@ -662,7 +663,7 @@ save.fig.fcn(fig = p.phi.posterior,
 
 ```
 
-We evaluated whether the week with the greatest counts (i.e., the peak week) changed over the years by relaxing the assumption of a common peak: the fixed-year shifting-peak model. It provided estimates nearly identical to those of the fixed-year model, except for 2015 and possibly 2014 (@suppfig-Nhats-NB). The peaks for these years appeared to be later than those of other years (@suppfig-shifting-peak). Although the estimated yearly median peak ($\pi_y$) ranged from `r signif(min(ShiftingPeak.peak.summary$median), 2)` to `r signif(max(ShiftingPeak.peak.summary$median), 2)` weeks, the standard deviation of the peak ($\sigma_\pi$) was `r signif(ShiftingPeak.peak.s.summary$median, 2)` weeks (approximately 5-6 days, 95% CI = `r signif(ShiftingPeak.peak.s.summary$q2.5, 2)` - `r signif(ShiftingPeak.peak.s.summary$q97.5, 2)`) with no directional trend and small variability across years. Although the shifting-peak model had a lower (better) LOOIC (@supptbl-convergence) and may be more appropriate in some years, we selected the fixed-year model as our best model, specifically for the 2026 estimate.
+We evaluated whether the week with the greatest counts (i.e., the peak week) changed over the years by relaxing the assumption of a common peak: the fixed-year shifting-peak model. It provided estimates nearly identical to those of the fixed-year model, except for 2015 and possibly 2014 (@suppfig-Nhats-NB). The peaks for these years appeared to be later than those of other years (@suppfig-shifting-peak). Although the estimated yearly median peak ($\pi_y$) ranged from `r signif(min(ShiftingPeak.peak.summary$median), 2)` to `r signif(max(ShiftingPeak.peak.summary$median), 2)` weeks, the standard deviation of the peak ($\sigma_\pi$) was `r signif(ShiftingPeak.peak.s.summary$median, 2)` weeks (approximately 5-6 days, 95% CI = `r signif(ShiftingPeak.peak.s.summary$q2.5, 2)` - `r signif(ShiftingPeak.peak.s.summary$q97.5, 2)`) with no directional trend and small variability across years. Because the quantity of interest is total abundance---the area under the seasonal curve---rather than the curve's shape, models that differ mainly in shape (the shifting-peak model, or an asymmetric pulse) yield nearly identical abundance estimates (@suppfig-Nhats-NB). We therefore selected the simpler fixed-year model as the most appropriate for providing the mother-calf abundance estimate for 2026, notwithstanding the shifting-peak model's lower LOOIC (@supptbl-convergence), which reflects better fit to the observed counts rather than to the estimand.
 
 ```{r PPC-results, echo=FALSE, include=FALSE}
 # PPC is conducted within the calf_production_hierarchical_stan.R script
@@ -747,7 +748,9 @@ In summary, the differences in point estimates from the previous report and this
 
 The new approach provided reliable estimates of the ENP gray whale mother-calf pairs during their northward migration. The three Negative Binomial models within the approach, i.e., single-year, fixed-year, and fixed-year shifting-peak, agreed on estimates, indicating that the results were robust to differences in parameter assumptions. The fixed-year model, which shared the migration shape among years, was selected as the best model for the 2026 data. When developing the hierarchical models, we deliberately avoided placing a common prior distribution on annual mother-calf abundance ($\theta_y$). Such an approach would shrink individual annual mother-calf abundance estimates toward the grand mean, introducing positive bias during years with low numbers of calves. Avoiding such shrinkage is particularly important given the substantial variation in calf production observed in recent years. To show the effects of the shrinkage, however, we developed such a model (the random-year model).
 
-The Negative Binomial model was shown to be more appropriate for the dataset than the Poisson-Binomial model, especially for the years with low mother-calf abundance. The estimation process, however, uses imputation for unobserved periods (e.g., bad weather, nights, etc.) by assuming that the seasonal migration curve is constant across years. However, the fixed-year shifting-peak model indicated that the timing of the peak migration may shift in some years (@suppfig-shifting-peak), raising the possibility that a portion of the migration could occur before or after the survey period. In 2026, adult whales departed Laguna San Ignacio, one of the wintering lagoons, approximately two weeks earlier than average (Urbán et al. 2026). If mother-calf pairs also exhibited this behavior, some may have migrated past the site prior to the start of the survey, and the estimated mother-calf abundance may be biased low. Future surveys may start earlier to detect possible early migration. Other potential sources of bias may be relatively small: the selected model (the Negative Binomial fixed-year model) slightly underpredicts the proportion of zeros (by \<2 percentage points), which would bias the mother-calf abundance estimate slightly upward. This upward bias is far smaller than the systematic inflation of the Poisson-Binomial estimates evident in Table S3, which increases as counts decline and culminates in non-convergence for 2026. Bayesian p-values for the proportion of observed zeros were `r PPC.compared$y.obs$bayes_p[2] %>% signif(5)` for the Negative Binomial model and \<0.001 for the Poisson-Binomial model. The Poisson-Binomial model inflated the weekly rates to absorb overdispersion, which resulted in predicting fewer zeros (@suppfig-prop-zeros-compared). This is the same rate inflation that produced high mother-calf abundance estimates. Finally, the analysis relies on the detection probability reported in Perryman et al.(2002); empirically updating this parameter is a priority for future work.
+The Negative Binomial model was shown to be more appropriate for the dataset than the Poisson-Binomial model, especially for the years with low mother-calf abundance. The estimation process, however, uses imputation for unobserved periods (e.g., bad weather, nights, etc.) by assuming that the seasonal migration curve is constant across years. However, the fixed-year shifting-peak model indicated that the timing of the peak migration may shift in some years (@suppfig-shifting-peak), raising the possibility that a portion of the migration could occur before or after the survey period. In 2026, adult whales departed Laguna San Ignacio, one of the wintering lagoons, approximately two weeks earlier than average (Urbán et al. 2026). If mother-calf pairs also exhibited this behavior, some may have migrated past the site prior to the start of the survey, and the estimated mother-calf abundance may be biased low. Future surveys may start earlier to detect possible early migration. Overlaying effort- and detection-corrected weekly counts on the fitted curves (@suppfig-shifting-peak) shows that the symmetric Gaussian (@eq-weekly-mean) does not fully capture the shape of the migration, which tends to rise more steeply than it declines. Because abundance is estimated as the area under the curve, however, this shape misspecification has little effect on the annual estimates---consistent with the near-nominal posterior predictive check (@suppfig-prop-zeros) and the agreement among models (@suppfig-Nhats-NB)---but an asymmetric seasonal form (e.g., a skew-normal or split-Gaussian pulse) would better represent the phenology and is a natural direction for future refinement of the seasonal model. 
+
+Other potential sources of bias may be relatively small: the selected model (the Negative Binomial fixed-year model) slightly underpredicts the proportion of zeros (by \<2 percentage points), which would bias the mother-calf abundance estimate slightly upward. This upward bias is far smaller than the systematic inflation of the Poisson-Binomial estimates evident in Table S3, which increases as counts decline and culminates in non-convergence for 2026. Bayesian p-values for the proportion of observed zeros were `r PPC.compared$y.obs$bayes_p[2] %>% signif(5)` for the Negative Binomial model and \<0.001 for the Poisson-Binomial model. The Poisson-Binomial model inflated the weekly rates to absorb overdispersion, which resulted in predicting fewer zeros (@suppfig-prop-zeros-compared). This is the same rate inflation that produced high mother-calf abundance estimates. Finally, the analysis relies on the detection probability reported in Perryman et al.(2002); empirically updating this parameter is a priority for future work.
 
 ```{r increase-2026, echo=FALSE, include=FALSE}
 # find abundance draws from the post processing function
