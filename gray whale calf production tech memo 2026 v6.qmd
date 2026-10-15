@@ -79,9 +79,13 @@ stan.fixed.year.run.date <- "2026-09-11"
 stan.single.year.run.date <- "2026-09-11"
 stan.shifting.peak.run.date <- "2026-09-11"
 stan.randomyear.run.date <- "2026-09-14"
+stan.fixedyear.AR1.run.date <- "2026-10-14"
 
 fixed.year.stan.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_",
                                        stan.fixed.year.run.date, ".info"))
+
+fixed.year.AR1.stan.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_AR1_",
+                                       stan.fixedyear.AR1.run.date, ".info"))
 
 fixed.year.stan <- readRDS(fixed.year.stan.info$out.filename)
 
@@ -327,27 +331,27 @@ loo.randomyear <- readRDS("RData//loo_out_nb_randomyear.rds")
 loo.AR1 <- readRDS("RData//loo_out_nb_fixedyear_AR1.rds")
 
 convergence.table <- data.frame(
-  Model = c("Fixed-year", "Shifting-peak", "Single-year", "Fixed-year-AR1"),
-  Max_Rhat = c(max(fixed.summary$rhat), 
+  Model = c("Fixed-year", "Fixed-year-AR1", "Shifting-peak", "Single-year"),
+  Max_Rhat = c(max(fixed.summary$rhat),
+               max(AR1.summary$rhat), 
                max(shifting.summary$rhat),
-               max(single.summary$rhat),
-               max(AR1.summary$rhat)),
+               max(single.summary$rhat)),
   min_ESS_bulk = c(min(fixed.summary$ess_bulk),
+                   min(AR1.summary$ess_bulk),
                    min(shifting.summary$ess_bulk),
-                   min(shifting.summary$ess_bulk),
-                   min(AR1.summary$ess_bulk)),
+                   min(single.summary$ess_bulk)),
   min_ESS_tail = c(min(fixed.summary$ess_tail),
+                   min(AR1.summary$ess_tail),
                    min(shifting.summary$ess_tail),
-                   min(single.summary$ess_tail),
-                   min(AR1.summary$ess_tail)),
+                   min(single.summary$ess_tail)),
   LOOIC = c(loo.fixedyear$loo$estimates["looic", "Estimate"],
+            loo.AR1$loo$estimates["looic", "Estimate"],
             loo.shiftingpeak.centered$loo$estimates["looic", "Estimate"],
-            NA,
-            loo.AR1$loo$estimates["looic", "Estimate"]),
+            NA),
   SE_LOOIC = c(loo.fixedyear$loo$estimates["looic", "SE"],
+               loo.AR1$loo$estimates["looic", "SE"],
                loo.shiftingpeak.centered$loo$estimates["looic", "SE"],
-               NA,
-               loo.AR1$loo$estimates["looic", "SE"])) #%>%
+               NA)) #%>%
 #  mutate(Max_Rhat = tibble::num(Max_Rhat, sigfig = 5))
 
 #ft.convergence.table <- flextable(convergence.table)
@@ -386,7 +390,7 @@ During the 2026 survey, `r effort.by.year %>% filter(Year == 2026) %>% select(Ef
 
 ### Model Diagnostics and Convergence
 
-The single-year, fixed-year, and fixed-year shifting-peak models fit to the data with ESS \> 400, all $\hat{R}$ statistics \< 1.01 (@supptbl-convergence), and no divergent transitions during MCMC. To facilitate convergence, the Stan MCMC sampling process was optimized by setting 'adapt_delta = 0.99', which forced the sampler to take smaller steps as it explored the parameter space. Only one influential data point was found (Pareto-k statistic = `r max(loo.fixedyear$loo$diagnostics$pareto_k) %>% signif(3)`) for the fixed-year model. Other models showed no influential data points as all Pareto k statistics were less than 0.7. Execution time was `r signif(as.numeric(fixed.year.stan$time()$total/60), 3)` minutes for the fixed-year model and `r signif(as.numeric(shifting.peak.stan$time()$total/60), 3)` minutes for the fixed-year shifting-peak model, while the single-year model run time ranged from `r signif(min(single.run.time$Run_Time), 3)` seconds to `r signif(max(single.run.time$Run_Time), 3)` seconds.
+The single-year, fixed-year, fixed-year-AR1, and fixed-year shifting-peak models fit to the data with ESS \> 400, all $\hat{R}$ statistics \< 1.01 (@supptbl-convergence), and no divergent transitions during MCMC. To facilitate convergence, the Stan MCMC sampling process was optimized by setting 'adapt_delta = 0.99', which forced the sampler to take smaller steps as it explored the parameter space. Only one influential data point was found (Pareto-k statistic = `r max(loo.fixedyear$loo$diagnostics$pareto_k) %>% signif(3)`) for the fixed-year model. Other models showed no influential data points as all Pareto k statistics were less than 0.7. Execution time was `r signif(as.numeric(fixed.year.stan$time()$total/60), 3)` minutes for the fixed-year model and `r signif(as.numeric(shifting.peak.stan$time()$total/60), 3)` minutes for the fixed-year shifting-peak model, while the single-year model run time ranged from `r signif(min(single.run.time$Run_Time), 3)` seconds to `r signif(max(single.run.time$Run_Time), 3)` seconds.
 
 The Negative Binomial model overcame the convergence issue found in the Poisson-Binomial model through its dispersion parameter ($\phi$). Under the Poisson-Binomial model, a week with only one or two sightings must be explained entirely by its weekly rate, which those few counts cannot identify; the posterior then flattens toward the prior. The Negative Binomial model instead attributes such variability to overdispersion ($\phi$), so the model no longer requires each sparse week's mean to be sharply identified in order to fit the data. Consequently, the single-year Negative Binomial model converged for 2026 despite the diffuse counts, without sharing information across years. The sensitivity analysis indicated that the Poisson-Binomial model began to fail (i.e., showed a lack of convergence) when `r effort.by.year %>% filter(Year == 2026) %>% pull(Counts)` counts were distributed over 4-5 weeks (@suppfig-sensitivity). The proportion of non-convergence increased as counts were spread over more weeks. When they were spread over all 9 weeks, however, the proportion decreased. The decrease at nine weeks reflects the counts being distributed more evenly, leaving fewer weeks with only one or two sightings; such an even spread across the entire survey period is biologically unlikely given the migration's phenology. In comparison, the Negative Binomial single-year model converged for all simulated data.
 
@@ -439,7 +443,7 @@ save.fig.fcn(fig = p.counts.2025.2026,
 
 For 2026, the Poisson-Binomial model failed to produce a reasonable estimate, yielding a median of `r estimates.2026.df %>% filter(Year == 2026) %>% select(Median) %>% pull()` with an extremely wide 95% credible interval (CI) of `r estimates.2026.df %>% filter(Year == 2026) %>% select(LCL) %>% pull()`--`r estimates.2026.df %>% filter(Year == 2026) %>% select(UCL) %>% pull() %>% signif(6) %>% format(scientific = F, big.mark = ",")` (@fig-Nhats-NB-POI). As mentioned previously, this failure occurred because the 2026 sightings were diffuse across several weeks rather than concentrated in a few weeks as was the case in 2025 (@fig-counts-2025-2026). The Negative Binomial single-year model was not affected by the diffuse sightings (@suppfig-Nhats-NB). However, the year-specific dispersion parameter ($\phi$) of the Negative Binomial single-year model was poorly estimated for some years: posterior distributions closely resembled their priors (@suppfig-single-year-phis). Because of this result, the single-year model was not selected as a candidate model for mother-calf abundance estimation, and hierarchical models with shared parameters among years were developed.
 
-```{r fixedyear-estimates-1, echo=FALSE, include=FALSE, message=FALSE}
+```{r all-estimates-1, echo=FALSE, include=FALSE, message=FALSE}
 shiftingpeak.estimates <- read.csv("data//all_estimates_nb_shiftingpeak_centered.csv") %>%
   select(-X) %>%
   rename(LCL = Lower_95_CI,
@@ -452,6 +456,13 @@ randomyear.estimates <- read.csv("data//all_estimates_nb_randomyear.csv") %>%
          UCL = Upper_95_CI) %>%
   mutate(Model = "NB random-year")
 
+AR1.estimates <- 
+read.csv("data//all_estimates_nb_fixedyear_AR1.csv") %>%
+  select(-X) %>%
+  rename(LCL = Lower_95_CI,
+         UCL = Upper_95_CI) %>%
+  mutate(Model = "NB fixed-year-AR1")
+  
 randomyear.estimates %>% 
   filter(Year == 2025) %>% 
   select(Median) %>% pull() -> randomyear.median.2025
@@ -568,7 +579,9 @@ save.fig.fcn(fig = p.POI.NB.estimates,
 
 The fixed-year model produced similar estimates to the single-year model (@suppfig-Nhats-NB) while providing more information for the dispersion parameter ($\phi$, @suppfig-fixed-year-phi), which was shared among years. The estimated median abundance of ENP gray whale mother-calf pairs in 2026 was `r fixedyear.estimates %>% filter(Year == 2026) %>% select(Median) %>% pull()` with a 95% CI: \[`r fixedyear.estimates %>% filter(Year == 2026) %>% select(LCL) %>% pull()`--`r fixedyear.estimates %>% filter(Year == 2026) %>% select(UCL) %>% pull()`\] (@tbl-fixed-year-estimates). In some years, the estimates from the fixed-year model were higher than those from the Poisson-Binomial or the Negative Binomial single-year models (e.g., 2015, @suppfig-Nhats-NB-POI). A closer look at the data revealed that survey effort during the middle of the season was lower than in adjacent weeks in those years (@suppfig-weekly-effort). This resulted in lower estimates from single-year models, whereas the fixed-year model used shared phenological information from other years to adjust for these low-effort weeks in the middle of a migration season. In a random-year model (@eq-randomyear_level), the 2025 and 2026 median estimates of mother-calf abundance were `r round(100 * (randomyear.median.2025 - fixedyear.median.2025)/fixedyear.median.2025)`% (`r randomyear.median.2025` vs. `r fixedyear.median.2025`) and `r round(100 * (randomyear.median.2026 - fixedyear.median.2026)/fixedyear.median.2026)`% (`r randomyear.median.2026` vs. `r fixedyear.median.2026`) higher than those from the fixed-year model, confirming the expected upward shrinkage in low calf production years.
 
-```{r shfting-year, include=FALSE, echo=FALSE, message=FALSE}
+When the seasonal curve was modeled with an autoregressive process (AR(1)), the abundance estimates were nearly identical to those from the fixed-year model with independent weekly mean. Differences were within two pairs (Table or figure). For 2025 and 2026, the median and 95% CI were `r AR1.estimates %>% filter(Year == 2025) %>% select(Median) %>% pull()` (95% CI = `r AR1.estimates %>% filter(Year == 2025) %>% select(LCL) %>% pull()` - `r AR1.estimates %>% filter(Year == 2025) %>% select(UCL) %>% pull()`) and `r AR1.estimates %>% filter(Year == 2026) %>% select(Median) %>% pull()` (95% CI = `r AR1.estimates %>% filter(Year == 2026) %>% select(LCL) %>% pull()` - `r AR1.estimates %>% filter(Year == 2026) %>% select(UCL) %>% pull()`), respectively.
+
+```{r shfting-peak, include=FALSE, echo=FALSE, message=FALSE}
 
 ShiftingPeak.out <- readRDS(
   file = paste0("RData//GWCalfCount_stan_nb_shiftingpeak_centered_",
@@ -897,9 +910,9 @@ $$ w[i] = ISO_{week} - min(ISO_{week}) + 1$$
 
 where $ISO_{week}$ is the week number in the ISO 8601 format for each survey week and $w[i] = 1, \dots, 13$: $ISO_{week} = 11$ (9 March to 15 March for 2026) to $ISO_{week} = 23$ (1 June to 7 June for 2026). This model is referred to as the fixed-year model, which treats years as a fixed effect.
 
-The Negative Binomial $\phi$ parameter (@eq-obs) has a Gamma prior distribution, whereas the detection probability is from the Normal distribution found in Perryman et al. (2002). These are shared among years and not estimated for each year.
+The Negative Binomial $\phi$ parameter (@eq-obs) has a Gamma prior distribution, whereas the detection probability is from the beta distribution with the mean (0.889) and standard deviation (0.06375) found in Perryman et al. (2002). These are shared among years and not estimated for each year.
 
-$$\phi \sim \mathrm{Gamma}(2,0.1), \qquad p \sim \mathcal{N}(0.889,\,0.064)$$ {#eq-nuisance}
+$$\phi \sim \mathrm{Gamma}(2,0.1), \qquad p \sim \mathcal{Beta}(20.6967,\, 2.58418)$$ {#eq-nuisance}
 
 The seasonal migration curve is also shared among years, where the shape parameters ($s_{w}$) are standardized to sum to zero over the entire season.
 
@@ -911,7 +924,7 @@ $$\theta_y \sim \mathcal{N}(0,\,5)\ \ (\text{fixed-year})$$ {#eq-fixed-year-leve
 
 $$\theta_y \sim \mathcal{N}(\mu_\theta,\,\sigma_\theta)\ \ \text{(random-year — shrinks levels)}$$ {#eq-randomyear_level}
 
-With the joint posterior distribution of $\lambda$ and $\phi$, the effort-corrected detection probability for the watch interval $i$:
+With the joint posterior distribution of $\lambda$, the underlying latent weekly rate, and $\phi$, the effort-corrected detection probability for the watch interval $i$:
 
 $$p_{i} = p\times\mathrm{eff}_{i}$$ {#eq-effort-corrected-p}
 
@@ -1053,7 +1066,7 @@ flextable(convergence.table) %>%
   colformat_num(j = c("LOOIC", "SE_LOOIC"), na_str = "-") %>%
   colformat_double(j = 2, digits = 4) %>%
   colformat_double(j = c(3, 4), digits = 0) %>%
-  colformat_double(j = 6, i = c(1,2), digits = 2)
+  colformat_double(j = 6, i = c(1,2, 3), digits = 2)
 
 ```
 
