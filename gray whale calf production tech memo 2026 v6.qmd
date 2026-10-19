@@ -84,9 +84,9 @@ stan.fixedyear.AR1.run.date <- "2026-10-14"
 fixed.year.stan.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_",
                                        stan.fixed.year.run.date, ".info"))
 
-fixed.year.AR1.stan.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_AR1_",
-                                       stan.fixedyear.AR1.run.date, ".info"))
-
+# fixed.year.AR1.stan.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_AR1_",
+#                                        stan.fixedyear.AR1.run.date, ".info"))
+# 
 fixed.year.stan <- readRDS(fixed.year.stan.info$out.filename)
 
 all.years <- unique(fixed.year.stan.info$pre.stan.data$calendar_year)
@@ -186,7 +186,7 @@ While this framework more fully accounted for uncertainty during unsampled perio
 
 The Poisson-Binomial approach estimated each calendar year independently using flat or vague priors on weekly passage rates ($\lambda_{w} \sim \text{Uniform}(0, 40)$). When the counts fell to the extreme lows seen in 2025 and 2026, very few or no calves were detected in most weeks. In 2025, those few counts were observed over three weeks, whereas in 2026 they were spread across 7 weeks. Fitting the Poisson distributions to estimate weekly means became difficult for the 2026 data because there was insufficient information to bound the parameters. A week with no sightings identifies its weekly rate near zero, and a week with several sightings identifies its rate well; but a week with only one or two sightings over \~50 hours of effort can be neither---the effort-corrected rate is essentially unconstrained by one or two events. In 2025 the sightings were concentrated in three weeks, so the remaining weeks were well-identified zeros; in 2026 the same number of pairs was distributed across seven weeks, producing several simultaneously weakly-identified weekly rates that the sampler could not resolve. The posterior distributions for those weeks' passage rates ($\lambda_{w}$) flattened and their uncertainty increased to the point where the Markov chain Monte Carlo (MCMC) sampler could not converge. Applying the Stewart and Weller (2021) model to the 2026 data resulted in posterior distributions of weekly means ranging from 3 to 12, with lower 95% credible limits that were virtually zero and upper credible limits of 15 to 38---values that are virtually identical to the prior distribution of $\lambda$. Fortuitously, the 17 whales observed in 2025 migrated in consecutive weeks (@fig-counts-2025-2026); otherwise, the estimation method would have failed then as well. Such sparse counts could recur in the future if the population numbers remain low.
 
-To elucidate this problem, a sensitivity analysis was conducted to determine the effects of such spread of low counts on model convergence. The total number of observed mother-calf pairs in 2026 (n = `r effort.by.year %>% filter(Year == 2026) %>% pull(Counts)`) was distributed over a 9-week period, ranging from 1 to 9 weeks, starting from week 5 (the middle of the sampling period). For example, the first set contained all 26 sightings in week 5. For the second set, 26 sightings were distributed between weeks 4 and 5, and so on. The numbers of sightings across weeks were randomly distributed using the *sample* function in R. Within each week, sightings were distributed according to the true effort hours from 2026, using a multinomial distribution with proportional effort for the week (i.e., effort/sum(effort)). The Poisson-Binomial model was fitted to the simulated count data using Jags to determine whether or not the MCMC was converged and reliable estimates were obtained using the rank-normalized $\hat{R}$ statistic and tail- and bulk-ESS values. Five parallel chains of 100,000 steps were thinned every 100 steps, and the initial 50,000 steps were discarded as burn-in samples. The same process was repeated 100 times to assess the variability in convergence at each spread (i.e., from 1 week to 9 weeks).
+To elucidate this problem, a sensitivity analysis was conducted to determine the effects of such spread of low counts on model convergence. The total number of observed mother-calf pairs in 2026 (n = `r effort.by.year %>% filter(Year == 2026) %>% pull(Counts)`) was distributed over a 9-week period, ranging from 1 to 9 weeks, starting from week 5 (the middle of the sampling period). For example, the first set contained all 26 sightings in week 5. For the second set, 26 sightings were distributed between weeks 4 and 5, and so on. The numbers of sightings across weeks were randomly distributed using the *sample* function in R. Within each week, sightings were distributed according to the true effort hours from 2026, using a multinomial distribution with proportional effort for the week (i.e., effort/sum(effort)). The Poisson-Binomial model was fitted to the simulated count data using Jags (Plummer YEAR) via the *jagsUI* package (Kellner 2026) in R to determine whether or not the MCMC was converged and reliable estimates were obtained using the rank-normalized $\hat{R}$ statistic and tail and bulk effective sample size (ESS) values (Vehtari et al. 2017, 2021). Five parallel chains of 100,000 steps were thinned every 100 steps, and the initial 50,000 steps were discarded as burn-in samples. The same process was repeated 100 times to assess the variability in convergence at each spread (i.e., from 1 week to 9 weeks).
 
 ```{r previous-results, include=FALSE, echo=FALSE}
 # bring in the previous estimaters from Lang et al. 2025
@@ -208,14 +208,9 @@ estimates.2026.df <- rbind(estimates.2025,
 
 ### The Negative Binomial Approach
 
-To overcome these numerical difficulties in estimating the total number of mother-calf pairs from very sparse counts, specifically for 2026, the new approach reported here was developed. A detailed description of the modeling approach is presented in the Supplementary Material (Equations 1-15). Briefly, in place of the Poisson-Binomial observation model, a type-2 Negative Binomial model was used. This model was applied to the dataset in two ways: each year separately (the single-year model), as was done by Stewart and Weller (2021), and with a hierarchical approach (the fixed-year model), in which some parameters were shared among years. The total mother-calf abundance was not shared across years to avoid the "shrinkage" of shared parameters toward the grand mean, which is a common phenomenon in a hierarchical Bayesian approach (Gelman et al. 2013). Although such an approach was not used to estimate mother-calf abundance, the effect of the shrinkage is shown below for comparison (the random-year model). The fixed-year approach assumed that the seasonal migration curve was identical among years. To evaluate the sensitivity of this assumption, we fitted alternative models in which (1) the timing of the migration peak was allowed to vary among years (the fixed-year shifting-peak model) and (2) weekly counts were treated as a stationary autoregressive process (the fixed-year-AR1 model).
+To overcome these numerical difficulties in estimating the total number of mother-calf pairs from very sparse counts, specifically for 2026, the new approach reported here was developed. A detailed description of the modeling approach is presented in the Supplementary Material (Equations 1-15). Briefly, in place of the Poisson-Binomial observation model, a type-2 Negative Binomial model was used. This model was applied to the dataset in two ways: each year separately (the single-year model), as was done by Stewart and Weller (2021), and with a hierarchical approach (the fixed-year model), in which some parameters were shared among years. The total mother-calf abundance was not shared across years to avoid the "shrinkage" of shared parameters toward the grand mean, which is a common phenomenon in a hierarchical Bayesian approach (Gelman et al. 2013). Although such an approach was not used to estimate mother-calf abundance, the effect of the shrinkage is shown below for comparison (the random-year model). The fixed-year approach assumed that the weekly means were independent of each other and that the seasonal migration curve was identical among years. To evaluate the sensitivity of this assumption, we fitted alternative models in which (1) the timing of the migration peak was allowed to vary among years (the fixed-year shifting-peak model) and (2) weekly counts were treated as a stationary autoregressive process (the fixed-year-AR1 model).
 
 ```{r single-year-results, include=FALSE, echo=FALSE}
-single.year.global.summary <- read.csv("data//global_summary_single_year.csv")
-
-single.year.global.summary %>%
-  filter(variable == "phi") -> phi.summary
-
 single.year.estimates <- read.csv("data//all_estimates_nb_singleyear.csv") %>%
   select(-X) %>%
   rename(LCL = Lower_95_CI,
@@ -308,9 +303,9 @@ save.fig.fcn(fig = p.phi.smooth,
 
 Models were fitted to the data using Stan (v2.39.0, https://mc-stan.org/) via the *cmdstanr* package (Gabry et al. 2024) in the R Statistical Environment (version 4.6.1, R Development Core Team). Four independent chains of MCMC were run with 1000 warm-up steps, which were discarded, and 2000 sampling steps for inference. Convergence of MCMC was examined using the bulk and tail effective sample sizes (ESS) and the rank-normalized $\hat{R}$ statistics [@vehtari_rank-normalization_2021; @vehtari_practical_2017]. Successful convergence was assumed when both bulk and tail ESS exceeded 400, and all $\hat{R}$ statistics were less than 1.01.
 
-Conventional model selection procedures, such as Leave-One-Out information criteria (LOOIC), were computed but not used as the primary model selection tool because (a) total mother-calf abundance is calculated from both observed and unobserved intervals, but likelihood values are only available for the observed portions. LOOIC, therefore, only evaluates predictive performance on observed intervals, which does not directly represent the target estimand; and (b) LOOIC favors complex models with year-specific seasonal curves (e.g., the fixed-year shifting-peak model) while penalizing the parsimonious curve deliberately selected to stabilize estimation in years with sparse data (the fixed-year model). Thus, model selection was based on the robustness of parameter estimation in the most recent years with very low counts. A posterior predictive check of the selected model was used to assess its adequacy.
+Conventional model selection procedures, such as Leave-One-Out information criteria (LOOIC), were computed but not used as the primary model selection tool because (a) total mother-calf abundance is calculated from both observed and unobserved intervals, but likelihood values are only available for the observed portions. LOOIC, therefore, only evaluates predictive performance on observed intervals, which does not directly represent the target estimand; (b) LOOIC favors complex models with year-specific seasonal curves (e.g., the fixed-year shifting-peak model) while penalizing the parsimonious curve deliberately selected to stabilize estimation in years with sparse data (the fixed-year model); and (c) the primary objective of this exercise was to find a model that can provide a robust estimate of gray whale mother-calf abundance for 2026 when the existing model failed. Thus, model selection was based on the robustness of parameter estimation in the most recent years with very low counts. A posterior predictive check of the selected model was used to assess its adequacy.
 
-All Stan code and R script files used in this analysis are available in the following GitHub repository (https://github.com/SWFSC/MMTD-GrayWhaleCalfProduction).
+Data, Stan code, and R script files used in this analysis are available in the following GitHub repository (https://github.com/SWFSC/MMTD-GrayWhaleCalfProduction).
 
 ## Results
 
@@ -319,7 +314,7 @@ fixed.summary <- read.csv("data//global_summary_nb_fixedyear.csv") %>%
   mutate(Model = "Fixed")
 shifting.summary <- read.csv("data//global_summary_nb_shiftingpeak_centered.csv") %>%
   mutate(Model = "Shifting")
-single.summary <- read.csv("data//global_summary_single_year.csv") %>%
+single.summary <- read.csv("data//global_summary_nb_single_year.csv") %>%
   mutate(Model = "Single")
 AR1.summary <- read.csv("data//global_summary_nb_fixedyear_AR1.csv")%>%
   mutate(Model = "AR1")
@@ -355,11 +350,6 @@ convergence.table <- data.frame(
 #  mutate(Max_Rhat = tibble::num(Max_Rhat, sigfig = 5))
 
 #ft.convergence.table <- flextable(convergence.table)
-
-shifting.peak.stan <- readRDS(paste0(
-  "RData//GWCalfCount_Stan_nb_shiftingpeak_centered_",
-  stan.shifting.peak.run.date, ".rds"))
-
 single.run.time <- data.frame(Year = all.years, Run_Time = NA, Run_Time_2 = NA)
 for (k in 1:length(all.years)){
   single.stan.info <- readRDS(
@@ -382,6 +372,14 @@ for (k in 1:length(all.years)){
 #                loo.randomyear$loo$estimates["looic", "SE"],
 #                loo.shiftingpeak.centered$loo$estimates["looic", "SE"]))
 
+
+ShiftingPeak.out <- readRDS(
+  file = paste0("RData//GWCalfCount_stan_nb_shiftingpeak_centered_",
+  stan.shifting.peak.run.date, ".rds"))
+
+AR1.info <- readRDS(paste0("RData//GWCalfCount_Stan_nb_fixedyear_AR1_",
+                           stan.fixedyear.AR1.run.date, ".info"))
+
 ```
 
 ### 2026 Survey Effort
@@ -390,9 +388,9 @@ During the 2026 survey, `r effort.by.year %>% filter(Year == 2026) %>% select(Ef
 
 ### Model Diagnostics and Convergence
 
-The single-year, fixed-year, fixed-year-AR1, and fixed-year shifting-peak models fit to the data with ESS \> 400, all $\hat{R}$ statistics \< 1.01 (@supptbl-convergence), and no divergent transitions during MCMC. To facilitate convergence, the Stan MCMC sampling process was optimized by setting 'adapt_delta = 0.99', which forced the sampler to take smaller steps as it explored the parameter space. Only one influential data point was found (Pareto-k statistic = `r max(loo.fixedyear$loo$diagnostics$pareto_k) %>% signif(3)`) for the fixed-year model. Other models showed no influential data points as all Pareto k statistics were less than 0.7. Execution time was `r signif(as.numeric(fixed.year.stan$time()$total/60), 3)` minutes for the fixed-year model and `r signif(as.numeric(shifting.peak.stan$time()$total/60), 3)` minutes for the fixed-year shifting-peak model, while the single-year model run time ranged from `r signif(min(single.run.time$Run_Time), 3)` seconds to `r signif(max(single.run.time$Run_Time), 3)` seconds.
+The single-year, fixed-year, fixed-year-AR1, and fixed-year shifting-peak models fit to the data with ESS \> 400, all $\hat{R}$ statistics \< 1.01 (@supptbl-convergence), and no divergent transitions during MCMC. To facilitate convergence, the Stan MCMC sampling process was optimized by setting 'adapt_delta = 0.99', which forced the sampler to take smaller steps as it explored the parameter space. Only one influential data point was found (Pareto-k statistic = `r max(loo.fixedyear$loo$diagnostics$pareto_k) %>% signif(3)`) for the fixed-year model. Other models showed no influential data points as all Pareto-k statistics were less than 0.7. Execution times were `r signif(as.numeric(fixed.year.stan$time()$total/60), 3)` minutes for the fixed-year model, `r signif(as.numeric(ShiftingPeak.out$time()$total/60), 3)` minutes for the fixed-year shifting-peak model, and `r signif(as.numeric(AR1.info$Run.time), 3)` minutes for the fixed-year-AR1 model, while the single-year model run time ranged from `r signif(min(single.run.time$Run_Time), 3)` seconds to `r signif(max(single.run.time$Run_Time), 3)` seconds.
 
-The Negative Binomial model overcame the convergence issue found in the Poisson-Binomial model through its dispersion parameter ($\phi$). Under the Poisson-Binomial model, a week with only one or two sightings must be explained entirely by its weekly rate, which those few counts cannot identify; the posterior then flattens toward the prior. The Negative Binomial model instead attributes such variability to overdispersion ($\phi$), so the model no longer requires each sparse week's mean to be sharply identified in order to fit the data. Consequently, the single-year Negative Binomial model converged for 2026 despite the diffuse counts, without sharing information across years. The sensitivity analysis indicated that the Poisson-Binomial model began to fail (i.e., showed a lack of convergence) when `r effort.by.year %>% filter(Year == 2026) %>% pull(Counts)` counts were distributed over 4-5 weeks (@suppfig-sensitivity). The proportion of non-convergence increased as counts were spread over more weeks. When they were spread over all 9 weeks, however, the proportion decreased. The decrease at nine weeks reflects the counts being distributed more evenly, leaving fewer weeks with only one or two sightings; such an even spread across the entire survey period is biologically unlikely given the migration's phenology. In comparison, the Negative Binomial single-year model converged for all simulated data.
+The Negative Binomial model overcame the convergence issue found in the Poisson-Binomial model through its dispersion parameter ($\phi$). Under the Poisson-Binomial model, a week with only one or two sightings must be explained entirely by its weekly rate, which those few counts cannot identify; the posterior then flattens toward the prior. The Negative Binomial model instead attributes such variability to overdispersion ($\phi$), so the model no longer requires each sparse week's mean to be sharply identified in order to fit the data. Consequently, the single-year Negative Binomial model converged for 2026 despite the diffuse counts, without sharing information across years. The sensitivity analysis indicated that the Poisson-Binomial model began to fail (i.e., showed a lack of convergence) when `r effort.by.year %>% filter(Year == 2026) %>% pull(Counts)` counts were distributed over 4-5 weeks (@suppfig-sensitivity). The proportion of non-convergence increased as counts were spread over more weeks. However, when they were spread over all 9 weeks, the proportion decreased. The decrease at nine weeks reflects the counts being distributed more evenly, leaving fewer weeks with only one or two sightings; such an even spread across the entire survey period is biologically unlikely given the migration's phenology. In comparison, the Negative Binomial single-year model converged for all simulated data.
 
 ```{r find-means, echo=FALSE, message=FALSE, include=FALSE}
 mean.POI.2025 <- estimates.2026.df %>%
@@ -577,15 +575,11 @@ save.fig.fcn(fig = p.POI.NB.estimates,
              replace = save.fig)
 ```
 
-The fixed-year model produced similar estimates to the single-year model (@suppfig-Nhats-NB) while providing more information for the dispersion parameter ($\phi$, @suppfig-fixed-year-phi), which was shared among years. The estimated median abundance of ENP gray whale mother-calf pairs in 2026 was `r fixedyear.estimates %>% filter(Year == 2026) %>% select(Median) %>% pull()` with a 95% CI: \[`r fixedyear.estimates %>% filter(Year == 2026) %>% select(LCL) %>% pull()`--`r fixedyear.estimates %>% filter(Year == 2026) %>% select(UCL) %>% pull()`\] (@tbl-fixed-year-estimates). In some years, the estimates from the fixed-year model were higher than those from the Poisson-Binomial or the Negative Binomial single-year models (e.g., 2015, @suppfig-Nhats-NB-POI). A closer look at the data revealed that survey effort during the middle of the season was lower than in adjacent weeks in those years (@suppfig-weekly-effort). This resulted in lower estimates from single-year models, whereas the fixed-year model used shared phenological information from other years to adjust for these low-effort weeks in the middle of a migration season. In a random-year model (@eq-randomyear_level), the 2025 and 2026 median estimates of mother-calf abundance were `r round(100 * (randomyear.median.2025 - fixedyear.median.2025)/fixedyear.median.2025)`% (`r randomyear.median.2025` vs. `r fixedyear.median.2025`) and `r round(100 * (randomyear.median.2026 - fixedyear.median.2026)/fixedyear.median.2026)`% (`r randomyear.median.2026` vs. `r fixedyear.median.2026`) higher than those from the fixed-year model, confirming the expected upward shrinkage in low calf production years.
+The fixed-year model produced similar estimates to the single-year model (@suppfig-Nhats-NB) while providing more information for the dispersion parameter ($\phi$, @suppfig-fixed-year-phi), which was shared among years. The estimated median abundance of ENP gray whale mother-calf pairs in 2026 was `r fixedyear.estimates %>% filter(Year == 2026) %>% select(Median) %>% pull()` with a 95% CI: \[`r fixedyear.estimates %>% filter(Year == 2026) %>% select(LCL) %>% pull()`--`r fixedyear.estimates %>% filter(Year == 2026) %>% select(UCL) %>% pull()`\] (@tbl-fixed-year-estimates). In some years, the estimates from the fixed-year model were higher than those from the Poisson-Binomial or the Negative Binomial single-year models (e.g., 2015, @suppfig-Nhats-NB-POI). A closer look at the data revealed that survey effort during the middle of the season was lower than in adjacent weeks in those years (@suppfig-weekly-effort). This resulted in lower estimates from single-year models, whereas the fixed-year model used shared phenological information from other years to adjust for these low-effort weeks in the middle of a migration season. Median estimates of mother-calf abundance from the random-year model (@eq-randomyear_level) for 2025 and 2026 were `r round(100 * (randomyear.median.2025 - fixedyear.median.2025)/fixedyear.median.2025)`% (`r randomyear.median.2025` vs. `r fixedyear.median.2025`) and `r round(100 * (randomyear.median.2026 - fixedyear.median.2026)/fixedyear.median.2026)`% (`r randomyear.median.2026` vs. `r fixedyear.median.2026`) higher than those from the fixed-year model, confirming the expected upward shrinkage in low calf production years.
 
-When the seasonal curve was modeled with an autoregressive process (AR(1)), the abundance estimates were nearly identical to those from the fixed-year model with independent weekly mean. Differences were within two pairs (Table or figure). For 2025 and 2026, the median and 95% CI were `r AR1.estimates %>% filter(Year == 2025) %>% select(Median) %>% pull()` (95% CI = `r AR1.estimates %>% filter(Year == 2025) %>% select(LCL) %>% pull()` - `r AR1.estimates %>% filter(Year == 2025) %>% select(UCL) %>% pull()`) and `r AR1.estimates %>% filter(Year == 2026) %>% select(Median) %>% pull()` (95% CI = `r AR1.estimates %>% filter(Year == 2026) %>% select(LCL) %>% pull()` - `r AR1.estimates %>% filter(Year == 2026) %>% select(UCL) %>% pull()`), respectively.
+When the seasonal curve was modeled with an autoregressive process (AR(1)), the abundance estimates were very similar to those from the fixed-year model with independent weekly means, especially at low counts (@supptbl-fixedyear-AR1-estimates). For 2025 and 2026, the median and 95% CI were `r AR1.estimates %>% filter(Year == 2025) %>% select(Median) %>% pull()` (95% CI = `r AR1.estimates %>% filter(Year == 2025) %>% select(LCL) %>% pull()` - `r AR1.estimates %>% filter(Year == 2025) %>% select(UCL) %>% pull()`) and `r AR1.estimates %>% filter(Year == 2026) %>% select(Median) %>% pull()` (95% CI = `r AR1.estimates %>% filter(Year == 2026) %>% select(LCL) %>% pull()` - `r AR1.estimates %>% filter(Year == 2026) %>% select(UCL) %>% pull()`), respectively.
 
 ```{r shfting-peak, include=FALSE, echo=FALSE, message=FALSE}
-
-ShiftingPeak.out <- readRDS(
-  file = paste0("RData//GWCalfCount_stan_nb_shiftingpeak_centered_",
-  stan.shifting.peak.run.date, ".rds"))
 
 ShiftingPeak.peak.summary <- ShiftingPeak.out$summary(
   c("peak_week"),
@@ -682,7 +676,7 @@ save.fig.fcn(fig = p.phi.posterior,
 
 ```
 
-We evaluated whether the week with the greatest counts (i.e., the peak week) changed over the years by relaxing the assumption of a common peak: the fixed-year shifting-peak model. It provided estimates nearly identical to those of the fixed-year model, except for 2015 and possibly 2014 (@suppfig-Nhats-NB). The peaks for these years appeared to be later than those of other years (@suppfig-shifting-peak). Although the estimated yearly median peak ($\pi_y$) ranged from `r signif(min(ShiftingPeak.peak.summary$median), 2)` to `r signif(max(ShiftingPeak.peak.summary$median), 2)` weeks, the standard deviation of the peak ($\sigma_\pi$) was `r signif(ShiftingPeak.peak.s.summary$median, 2)` weeks (approximately 5-6 days, 95% CI = `r signif(ShiftingPeak.peak.s.summary$q2.5, 2)` - `r signif(ShiftingPeak.peak.s.summary$q97.5, 2)`) with no directional trend and small variability across years. Because the quantity of interest is total abundance---the area under the seasonal curve---rather than the curve's shape, models that differ mainly in shape (the shifting-peak model, or an asymmetric pulse) yield nearly identical abundance estimates (@suppfig-Nhats-NB). We therefore selected the simpler fixed-year model as the most appropriate for providing the mother-calf abundance estimate for 2026, notwithstanding the shifting-peak model's lower LOOIC (@supptbl-convergence), which reflects better fit to the observed counts rather than to the estimand.
+We evaluated whether the week with the greatest counts (i.e., the peak week) changed over the years by relaxing the assumption of a common peak: the fixed-year shifting-peak model. It provided estimates nearly identical to those of the fixed-year model, except for 2015 and possibly 2014 (@suppfig-Nhats-NB). The peaks for these years appeared to be later than those of other years (@suppfig-shifting-peak). Although the estimated yearly median peak ($\pi_y$) ranged from `r signif(min(ShiftingPeak.peak.summary$median), 2)` to `r signif(max(ShiftingPeak.peak.summary$median), 2)` weeks, the standard deviation of the peak ($\sigma_\pi$) was `r signif(ShiftingPeak.peak.s.summary$median, 2)` weeks (approximately 5-6 days, 95% CI = `r signif(ShiftingPeak.peak.s.summary$q2.5, 2)` - `r signif(ShiftingPeak.peak.s.summary$q97.5, 2)`) with no directional trend and small variability across years. Because the quantity of interest is total abundance of mother-calf pairs---the area under the seasonal curve---rather than the curve's shape, models that differ mainly in shape (the shifting-peak model, or an asymmetric pulse) yield nearly identical estimates (@suppfig-Nhats-NB). We therefore selected the simpler fixed-year model as the most appropriate for providing the mother-calf abundance estimate for 2026, notwithstanding the shifting-peak model's lower LOOIC (@supptbl-convergence), which reflects better fit to the observed counts rather than to the estimand.
 
 ```{r PPC-results, echo=FALSE, include=FALSE}
 # PPC is conducted within the calf_production_hierarchical_stan.R script
@@ -765,9 +759,9 @@ In summary, the differences in point estimates from the previous report and this
 
 ### Model Robustness and Limitations
 
-Because 2026 observations were too sparse to estimate calf production independently, information was shared across years. The resulting estimate was robust to the specific modeling choices governing that sharing (single-year vs. pooled, fixed vs. random annual levels, fixed vs. varying peak timing, and independent vs. autocorrelated weekly effects). The fixed-year model, which shared the migration shape among years, was selected as the best model for the 2026 data, as it was the simplest among considered models. When developing the hierarchical models, we deliberately avoided placing a common prior distribution on annual mother-calf abundance ($\theta_y$). Such an approach would shrink individual annual mother-calf abundance estimates toward the grand mean, introducing positive bias in years with low numbers of calves. Avoiding such shrinkage is particularly important given the substantial variation in calf production observed in recent years. 
+Because 2026 observations were too sparse to estimate mother-calf abundance using the Poisson-Binomial model, a Negative-Binomial model was developed. The new model was capable of estimating annual mother-calf abundance, however, a parameter (the over-dispersion parameter) was not estimated well for some years. Consequently, a variant of the model with shared parameters across years was developed. We tested various levels of sharing and found that mother-calf abundance estimates remained robust to the specific modeling choices (single-year, fixed-year, random annual levels, shifting-peak timing, and autocorrelated weekly effects). The fixed-year model, which shared the migration shape among years, was selected as the best model for the 2026 data, as it was the simplest among considered models. When developing the hierarchical models, we deliberately avoided placing a common prior distribution on annual mother-calf abundance ($\theta_y$; random annual levels). Such an approach would shrink individual annual mother-calf abundance estimates toward the grand mean, introducing positive bias in years with low numbers of calves. Avoiding such shrinkage is particularly important given the substantial variation in calf production observed in recent years. 
 
-The Negative Binomial model was shown to be more appropriate for the dataset than the Poisson-Binomial model, especially for the years with low mother-calf abundance. The estimation process, however, uses imputation for unobserved periods (e.g., bad weather, nights, etc.) by assuming that the seasonal migration curve is constant across years. However, the fixed-year shifting-peak model indicated that the timing of the peak migration may shift in some years (@suppfig-shifting-peak), raising the possibility that a portion of the migration could occur before or after the survey period. In 2026, adult whales departed Laguna San Ignacio, one of the wintering lagoons, approximately two weeks earlier than average (Urbán et al. 2026). If mother-calf pairs also exhibited this behavior, some may have migrated past the site before the survey began, and the estimated mother-calf abundance may be biased low. Future surveys may start earlier to detect possible early migration. Overlaying effort- and detection-corrected weekly counts on the fitted curves (@suppfig-shifting-peak) shows that the symmetric Gaussian (@eq-weekly-mean) does not fully capture the shape of the migration, which tends to rise more steeply than it declines. Because abundance is estimated as the area under the curve, however, this shape misspecification has little effect on the annual estimates---consistent with the near-nominal posterior predictive check (@suppfig-prop-zeros) and the agreement among models (@suppfig-Nhats-NB)---but an asymmetric seasonal form (e.g., a skew-normal) would better represent the phenology and is a natural direction for future refinement of the seasonal model. 
+The Negative Binomial model was shown to be more appropriate for the dataset than the Poisson-Binomial model, especially for the years with low mother-calf abundance. The estimation process uses imputation for unobserved periods (e.g., bad weather, nights, etc.) by assuming that the seasonal migration curve is constant across years. However, the fixed-year shifting-peak model indicated that the timing of the peak migration may shift in some years (@suppfig-shifting-peak), raising the possibility that a portion of the migration could occur before or after the survey period. In 2026, adult whales departed Laguna San Ignacio, one of the wintering lagoons, approximately two weeks earlier than average (Urbán et al. 2026). If mother-calf pairs also exhibited this behavior, some may have migrated past the site before the survey began, and the estimated mother-calf abundance may be biased low. Future surveys may start earlier to detect possible early migration. Overlaying effort- and detection-corrected weekly counts on the fitted curves (@suppfig-shifting-peak) shows that the symmetric Gaussian (@eq-weekly-mean) does not fully capture the shape of the migration, which tends to rise more steeply than it declines. Because abundance is estimated as the area under the curve, however, this shape misspecification has little effect on the annual estimates---consistent with the near--nominal posterior predictive check (@suppfig-prop-zeros) and the agreement among models (@suppfig-Nhats-NB)---but an asymmetric seasonal form (e.g., a skew-normal) would better represent the phenology and is a natural direction for future refinement of the seasonal model. 
 
 Other potential sources of bias may be relatively small: the selected model (the Negative Binomial fixed-year model) slightly underpredicts the proportion of zeros (by \<2 percentage points), which would bias the mother-calf abundance estimate slightly upward. This upward bias is far smaller than the systematic inflation of the Poisson-Binomial estimates evident in @supptbl-single-year-estimates, which increases as counts decline and culminates in non-convergence for 2026. Bayesian p-values for the proportion of observed zeros were `r PPC.compared$y.obs$bayes_p[2] %>% signif(2)` for the Negative Binomial model and \<0.001 for the Poisson-Binomial model. The Poisson-Binomial model inflated the weekly rates to account for overdispersion, which resulted in fewer zeros predicted (@suppfig-prop-zeros-compared). This is the same rate inflation that produced high mother-calf abundance estimates. Finally, the analysis relies on the detection probability reported in Perryman et al.(2002); empirically updating this parameter is a priority for future work.
 
@@ -807,17 +801,19 @@ A recent report indicated that the winter Arctic sea ice extent was exceptionall
 
 ## Acknowledgements
 
-Our shore-based surveys of gray whales conducted from the Piedras Blancas Light Station would not be possible without the support and hospitality provided by the U.S. Department of the Interior’s Bureau of Land Management. We are particularly indebted to the support provided by John Bogacki, Jim Boucher, Ryan Cooper, and Jodie Nelson. A long list of experienced field biologists contributed to this data set, but the contributions by Susan Chivers, Paul Fiedler, Jim Gilpatrick, Morgan Lynn, and Richard Rowlett stand out because of their talents and dedication over 20+ years of survey effort reported herein. Wayne Perryman pioneered this study in 1994 and led the field effort for more than 20 years. His contributions to the science and fun of the project have everything to do with its enduring quality and success.
+Our shore-based surveys of gray whales conducted from the Piedras Blancas Light Station would not be possible without the support and hospitality provided by the U.S. Department of the Interior’s Bureau of Land Management. We are particularly indebted to the support provided by John Bogacki, Jim Boucher, Ryan Cooper, and Jodie Nelson. A long list of experienced field biologists contributed to this data set, but the contributions by Susan Chivers, Paul Fiedler, Jim Gilpatrick, Morgan Lynn, and Richard Rowlett stand out because of their talents and dedication over 20+ years of survey effort reported herein. Wayne Perryman pioneered this study in 1994 and led the field effort for more than 20 years. His contributions to the science and fun of the project have everything to do with its enduring quality and success. Josh Stewart and Tim Tinker provided constructive suggestions to an earlier version of the manuscript. 
 
 ## Literature Cited
 
 ::: {#refs}
 :::
 
-Gabry J, Češnovar R, Johnson A, Bronder S (2024). *cmdstanr: R Interface to 'CmdStan'*. R package version 0.8.0, <https://mc-stan.org/cmdstanr/>.
+Gabry J, Češnovar R, Johnson A, Bronder S (2024). cmdstanr: R Interface to 'CmdStan'. R package version 0.8.0, <https://mc-stan.org/cmdstanr/>.
 
 Gelman A, Carlin JB, Stern HS, Dunson DB, Vehtari A, Rubin DB (2013). Bayesian Data Analysis (3rd ed.). Chapman & Hall/CRC. https://doi.org/10.1201/9780429258480
 
+Kellner K (2026). jagsUI: A Wrapper Around 'rjags' to Streamline 'JAGS' Analyses. doi:10.32614/CRAN.package.jagsUI <https://doi.org/10.32614/CRAN.package.jagsUI>. R package version 1.6.3, <https://CRAN.R-project.org/package=jagsUI>.
+  
 Rice DW, Wolman AA (1971) The life history and ecology of the gray whale (*Eschrichtius robustus*). The American Society of Mammalogists, Stillwater, OK.
 
 Weller DW, Perryman WL (2019) Eastern North Pacific gray whale calf production estimates 1994-2018. Paper SC/68a/CMP17 presented to the International Whaling Commission’s Scientific Committee. 5 pp.
@@ -974,7 +970,9 @@ notation_data <- tibble(
     "s_w", 
     "\\mu_i", 
     "\\alpha_i", 
-    "A, \\tau, \\pi_y"
+    "A",
+    "\\tau",
+    "\\pi_y"
   ),
   `Stan Variable` = c(
     "count_obs[i]",
@@ -985,7 +983,9 @@ notation_data <- tibble(
     "week_eff[w]",
     "exp(log_mu_true[i])",
     "exp(log_alpha[i])",
-    "amp, width, peak_week[y]"
+    "amp", 
+    "width", 
+    "peak_week[y] = mu_peak + sigma_peak * peak_raw"
   ),
   Meaning = c(
     "Observed pairs in interval i",
@@ -996,7 +996,22 @@ notation_data <- tibble(
     "Seasonal (log) shape deviation",
     "Expected pairs per fully-observed interval",
     "Expected observed count (after detection + effort)",
-    "Pulse amplitude, width, year peak (shifting-peak model)"
+    "Pulse amplitude (shifting-peak model)", 
+    "pulse width (shifting-peak model)", 
+    "year peak (shifting-peak model)"
+  ),
+  `Prior distribution` = c(
+    "-",
+    "-",
+    "Beta(20.6967, 2.58418)",
+    "Gamma(2, 0.1)T(0.01,)",
+    "Normal(0, 5)",
+    "Normal(0, 1)",
+    "-",
+    "-",
+    "Normal(0, 5)",
+    "Gamma(2, 0.5)",
+    "Normal(week_mid, n_weeks/4) + Normal(0, 2) * Normal(0, 1)"
   )
 )
 
@@ -1020,7 +1035,8 @@ ft.notation <- flextable(notation_data) %>%
   align(align = "left", part = "all") %>%
   valign(valign = "top", part = "body") %>%
   padding(padding = 5, part = "all") %>%
-  width(j = c("Symbol", "Stan Variable", "Meaning"), width = c(1.2, 2.0, 3.5))
+  width(j = c("Symbol", "Stan Variable", "Meaning", "Prior distribution"), 
+        width = c(1.2, 2.0, 3.5, 3.0))
 
 
 ```
@@ -1061,7 +1077,7 @@ flextable(convergence.table) %>%
                     SE_LOOIC = "SE(LOOIC)") %>%
   compose(part = "header",
           j = "Max_Rhat",
-          value = as_paragraph(as_equation("\\hat{R}"))) %>%
+          value = as_paragraph("Max(", as_equation("\\hat{R}"), ")")) %>%
   paginate(init = TRUE, hdr_ftr = TRUE) %>%
   colformat_num(j = c("LOOIC", "SE_LOOIC"), na_str = "-") %>%
   colformat_double(j = 2, digits = 4) %>%
@@ -1070,7 +1086,7 @@ flextable(convergence.table) %>%
 
 ```
 
-Convergence metrics and leave-one-out information criteria (LOOIC) of three Negative Binomial models fitted to the sighting data of eastern North Pacific gray whale mother-calf pairs at the Piedras Blancas Light Station from 1994 to 2026. For the single-year model, the maximum ($\hat{R}$) and minimum (ESS) among all years are presented. No LOOIC value was provided for the single-year model because the data for the model are not the same as for the other two models.
+Convergence metrics (rank-normalized $\hat{R}$ and ESS) and leave-one-out information criteria (LOOIC) of four Negative Binomial models fitted to the sighting data of eastern North Pacific gray whale mother-calf pairs at the Piedras Blancas Light Station from 1994 to 2026. For the single-year model, the maximum $\hat{R}$ and minimum ESS among all years are presented. No LOOIC value was provided for the single-year model because the data for the model are not the same as for the other models.
 :::
 
 \newpage
@@ -1120,13 +1136,86 @@ ft.single.year %>%
   align(part = "header", align = "center") %>%
   align(j = 1, part = "header", align = "left") %>%
   colformat_double(j = "Year", big.mark = "", digits = 0) %>%
-  colformat_double(j = c(2,4,5,6,8,10), digits = 1) %>%
-  colformat_double(j = c(3,9,11,12), digits = 0) %>%
+  colformat_double(j = c(2,4,8,10), digits = 1) %>%
+  colformat_double(j = c(3,5,6,9,11,12), digits = 0) %>%
   fontsize(size = 8)
 
 ```
 
 Estimated abundance of eastern North Pacific mother-calf pairs using the Poisson-Binomial (POI, Stewart and Weller 2021) and Negative Binomial (NB) models applied to each year independently (the NB single-year model). LCL and UCL are 2.5% and 97.5% credible limits, respectively.
+:::
+
+\newpage
+
+::: {#supptbl-fixedyear-AR1-estimates}
+```{r}
+#| echo: false
+
+fixedyear.estimates %>%
+  select(-Model) %>%
+  left_join(AR1.estimates %>% 
+              select(-Model) %>%
+              rename(Mean_AR1 = Mean,
+                     Median_AR1 = Median,
+                     SE_AR1 = SE,
+                     LCL_AR1 = LCL,
+                     UCL_AR1 = UCL), by = "Year") -> AR1.indep.estimates
+
+# Convert the single-year dataframe into flextable. Insert an empty column
+# between NB and NB-AR1, so that two separate horizontal lines can be placed
+# below the first row (NB and NB-AR1)
+ft.AR1.indep <- flextable(AR1.indep.estimates %>%
+  mutate(` ` = "") %>%
+  relocate(` `, .before = Mean_AR1))
+
+ft.AR1.indep %>%
+    theme_booktabs() %>%
+  # 1. Add the top spanning header row
+  add_header_row(
+    top = TRUE,
+    values = c("Year", "NB", " ", "NB-AR1"),
+    colwidths = c(1, 5, 1, 5) # 1 col for Year, 5 cols for POI, 5 cols for NB
+  ) %>%
+  # 2. Rename the original headers (now the bottom header row)
+  set_header_labels(
+    Year = "Year",
+    Mean = "Mean", 
+    Median = "Median", 
+    SE = "SE", 
+    LCL = "LCL", 
+    UCL = "UCL",
+    Mean_AR1  = "Mean", 
+    Median_AR1  = "Median", 
+    SE_AR1  = "SE", 
+    LCL_AR1  = "LCL", 
+    UCL_AR1  = "UCL"
+  ) %>%
+  # 3. Vertically merge the "Year" column header across both rows
+  merge_v(part = "header", j = 1) %>%
+   hline(i = 1, j = 2:6, part = "header", 
+         border = officer::fp_border(width = 1, 
+                                     color = "black")) %>% 
+  hline(i = 1, j = 7, part = "header", 
+        border = officer::fp_border(width = 1, 
+                                    color = "transparent")) %>% 
+  hline(i = 1, j = 8:12, part = "header", 
+        border = officer::fp_border(width = 1, 
+                                    color = "black")) %>% 
+  
+  # 6. Increase width slightly to 0.25 inches to force Word to show the gap
+  width(j = 7, width = 0.25, unit = "in") %>% 
+  
+  # 5. Clean up formatting and styling
+  align(part = "header", align = "center") %>%
+  align(j = 1, part = "header", align = "left") %>%
+  colformat_int(j = "Year", big.mark = "") %>%
+  colformat_double(j = c(2,4,8,10), digits = 1) %>%
+  colformat_double(j = c(3,5,6,9,11,12), digits = 0) %>%
+  fontsize(size = 8)
+
+```
+
+Estimated abundance of eastern North Pacific mother-calf pairs using the Negative Binomial (NB) models with each week treated as independent of each other and as AR(1) process (NB-AR1). LCL and UCL are 2.5% and 97.5% credible limits, respectively.
 :::
 
 \newpage
@@ -1274,5 +1363,5 @@ knitr::include_graphics(paste0("figures//PPC_compared.png"))
 
 ```
 
-Proportion of zeros in observed (black vertical line = `r PPC.compared$y.obs$obs[1] %>% signif(3)`) and simulated data using the Poisson-Binomial and Negative Binomial fixed-year models. Results are for 1994--2025 only because the Poisson-Binomial model did not converge for 2026.
+Proportion of zeros in observed (black vertical line = `r PPC.compared$y.obs$obs[1] %>% signif(3)`) and simulated data using the Negative Binomial fixed-year and the Poisson-Binomial models. Results are for 1994--2025 only because the Poisson-Binomial model did not converge for 2026.
 :::
