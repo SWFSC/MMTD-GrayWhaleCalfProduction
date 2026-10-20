@@ -15,14 +15,14 @@ library(posterior)
 library(cmdstanr)
 
 source("GrayWhaleCalfProduction_fcns.R")
-save.fig <- T
+save.fig <- F
 
 # ---- settings ------------------------------------------------------
 n_rep      <- 100 #2 #20 #          # <- start with 20 as a pilot
 year       <- 2026
 rhat_cut   <- 1.01
 ess_cut    <- 400
-ckpt_file  <- "RData\\mcmc_breakdown_sweep_checkpoint.rds"
+ckpt_file  <- "RData//mcmc_breakdown_sweep_checkpoint.rds"
 jm_data_file <- "RData//mcmc_breakdown_jags_data.rds"
 
 # The same MCMC setup as it was used in previous years. Shorter chains
@@ -176,10 +176,13 @@ results_df <- do.call(rbind, results) %>%
 conv_rate <- results_df %>%
   group_by(Model, n_weeks) %>%
   summarise(p_fail = mean(!converged, na.rm = TRUE),
-            n_ok   = sum(!is.na(converged)), .groups = "drop")
+            n_ok   = sum(!is.na(converged)), .groups = "drop") %>%
+  mutate(Model.1 = ifelse(Model == "Negative Binomial", "NB-single", "POI-BIN")) %>%
+  select(-Model) %>%
+  rename(Model = Model.1)
 
 # ---- plot: P(non-convergence) vs count spread ----------------------
-p.break <- ggplot(conv_rate, aes(n_weeks, p_fail, colour = Model)) +
+p.break <- ggplot(conv_rate, aes(n_weeks, p_fail, color = Model)) +
   geom_line(linewidth = 0.8) +
   geom_point(size = 2) +
   scale_x_continuous(breaks = all.weeks) +
@@ -190,7 +193,6 @@ p.break <- ggplot(conv_rate, aes(n_weeks, p_fail, colour = Model)) +
                        total.counts, n_rep)) +
   theme_bw() +
   theme(legend.position = "top") 
-
 
 save.fig.fcn(fig = p.break,
              file.name = "figures//MCMC_breakdown.png",
@@ -204,7 +206,7 @@ save.fig.fcn(fig = p.break,
 p.rhat <- results_df %>%
   group_by(Model, n_weeks) %>%
   summarise(med_rhat = median(max_rhat, na.rm = TRUE), .groups = "drop") %>%
-  ggplot(aes(n_weeks, med_rhat, colour = Model)) +
+  ggplot(aes(n_weeks, med_rhat, color = Model)) +
   geom_hline(yintercept = rhat_cut, linetype = 2) +
   geom_line(linewidth = 0.8) + geom_point(size = 2) +
   scale_x_continuous(breaks = all.weeks) +
