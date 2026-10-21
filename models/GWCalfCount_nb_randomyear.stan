@@ -1,5 +1,5 @@
 // =====================================================================
-// Simple hierarchical model with shared prior for abundance
+// Simple hierarchical Negative Binomial model with shared prior for abundance
 // =====================================================================
 // year_eff comes from a common prior. 
 //
@@ -10,6 +10,10 @@
 // This model shows the problem with the shrinkage: estimates are pulled 
 // upward on recent low years. 
 //
+// This model was used to show how the shrinkage of the total abundance
+// is real and problematic. 
+//
+// Tomo Eguchi with help from AI (Claude)
 // =====================================================================
 
 data {
@@ -52,7 +56,9 @@ transformed parameters {
 model {
   year_eff_raw ~ normal(0, 1);  // this is eta_{year}
   week_eff_raw ~ normal(0, 1);  // this is eta_{week}
-  p_obs ~ normal(0.889, 0.06375);
+  //p_obs ~ normal(0.889, 0.06375);
+  p_obs      ~ beta(20.6967, 2.58418);     // Beta reparam of the Perryman detection estimate (Tinker's suggestion)
+  
   mu_year ~ normal(0, 5);
   sigma_year ~ normal(0, 2); 
   sigma_week ~ normal(0, 2);
