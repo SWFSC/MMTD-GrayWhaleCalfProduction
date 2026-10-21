@@ -1,3 +1,16 @@
+##########################################################################
+## Poisson-Binomial single-year model by Stewart and Weller
+##########################################################################
+##
+## Each year is treated independently without any sharing of information.
+## Observed counts per shift is a Binomial deviate with the weekly mean
+## coming from a Poisson distribution. 
+##
+## It worked fine until the number of counts decreased and they were spread
+## across several weeks. This problem is explained in Eguchi et al. (2026)
+##
+## This model was written by Josh Stewart
+
 
     model {
       p.obs ~ dnorm(0.889,0.06375^-2) #estimated observation probability
