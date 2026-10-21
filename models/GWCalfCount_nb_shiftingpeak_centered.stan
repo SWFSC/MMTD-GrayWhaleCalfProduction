@@ -1,16 +1,29 @@
 // =====================================================================
-// Shifting-peak -- MEAN-CENTERED -- 
+// Shifting-peak-centered -- MEAN-CENTERED -- 
 // =====================================================================
-// Fixes the amp <-> year_eff ridge that caused the tree-depth blowups and the
-// marginal mu_peak convergence in the baseline-anchored version.
+// Replaces the shared independent weekly effects (week_eff) with a parametric
+// migration curve: a Gaussian in week-space with shared amplitude and
+// width and a year-specific peak week. This:
+//   (a) reduces the number of parameters and costs far fewer effective parameters, 
+//       so the seasonal shape stays estimable even in sparse years; and
+//   (b) directly tests whether migration timing has shifted -- inspect
+//       peak_week[y] across years, and check whether sigma_peak is bounded
+//       away from 0.
 //
-// Change: the Gaussian pulse is centered to have mean ZERO across the week grid
-// (per year), so year_eff becomes the MEAN log-level and no longer trades off
-// against amp. Direct analog of the sum_to_zero fix that cleaned up fixed-year.
+// Fixes the amp <-> year_eff ridge that caused the tree-depth issues and the
+// marginal mu_peak convergence in the baseline-anchored version 
+// (GWCalfCount_nb_shiftingpeak.stan).
 //
-// Year levels are UNPOOLED, matching the fixed-year model, so this
+// The Gaussian pulse is centered to have mean ZERO across the week grid
+// (per year), so year_eff becomes the mean log-level and no longer trades off
+// against amp. Direct analog of the sum_to_zero week_eff fix 
+// that cleaned up the fixed-year model.
+//
+// Year levels are unpooled as it is for the fixed-year model, so this
 // isolates the effect of freeing the timing. Abundance estimates should be
 // invariant to the centering; only the amp/year_eff coordinates change.
+//
+// Tomo Eguchi with help from AI (Claude)
 // =====================================================================
 
 // Data are same as for the fixed-year model
@@ -81,7 +94,9 @@ model {
   mu_peak    ~ normal(week_mid, n_weeks / 4.0);
   sigma_peak ~ normal(0, 2);
   peak_raw   ~ normal(0, 1);
-  p_obs      ~ normal(0.889, 0.06375);
+  //p_obs      ~ normal(0.889, 0.06375);
+  p_obs      ~ beta(20.6967, 2.58418);     // Beta reparam of the Perryman detection estimate (Tinker's suggestion)
+  
   phi        ~ gamma(2, 0.1);
 
   for (i in 1:n_obs)
