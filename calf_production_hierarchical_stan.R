@@ -34,10 +34,10 @@ save.files <- TRUE #FALSE #
 
 data.ext <- "v3" # has to be v3
 
-model <- "nb_fixedyear_AR1"
-#model <- "nb_randomyear"  
+#model <- "nb_fixedyear_AR1"
+model <- "nb_randomyear"  
 #model <- "nb_fixedyear"
-#model <- "nb_shiftingpeak"
+#model <- "nb_shiftingpeak"  # Replaced by the centered version
 #model <- "nb_shiftingpeak_centered"
 
 # Change this to use results from a previous run
@@ -195,8 +195,13 @@ if (model == "nb" | model == "nb_fixedyear"){
                                  posterior::default_summary_measures(), 
                                  posterior::default_convergence_measures(),
                                  extra_quantiles = ~posterior::quantile2(., probs = c(0.025, 0.975)))
+} else if (model == "nb_randomyear"){
+  global_summary <- fit_$summary(c("p_obs", "sigma_week", "year_eff", "mu_year",
+                                   "phi",  "week_eff"),
+                                 posterior::default_summary_measures(), 
+                                 posterior::default_convergence_measures(),
+                                 extra_quantiles = ~posterior::quantile2(., probs = c(0.025, 0.975)))
 }
-
 # Using the results of MCMC, abundance is "simulated" in the following 
 # function. 
 stan.out <- stan.post.process(stan.fit = fit_, 
