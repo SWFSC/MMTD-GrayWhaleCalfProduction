@@ -59,7 +59,7 @@ model {
   year_eff     ~ normal(0, 5);            // wide, INDEPENDENT: no cross-year shrinkage
   week_eff_raw ~ normal(0, 1);
   //p_obs        ~ normal(0.889, 0.06375);
-  p_obs        ~ beta(20.6967, 2.58418);     // Tinker's Beta reparam of the Perryman detection estimate
+  p_obs        ~ beta(20.6967, 2.58418);     // Beta reparam of the Perryman detection estimate (Tinker)
   sigma_week   ~ normal(0, 2);
   phi          ~ gamma(2, 0.1);
 
