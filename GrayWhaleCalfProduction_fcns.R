@@ -156,7 +156,7 @@ curve_shiftpeak <- function(M, year_i,
   
   rows <- lapply(grid, function(w) {
     g    <- exp(-0.5 * ((w - peak) / wid)^2)        # draws-length
-    seas <- amp * (g - gbar)                        # mean-centred pulse
+    seas <- amp * (g - gbar)                        # mean-centered pulse
     q    <- quantile(exp(ye + seas), probs)
     data.frame(week = w, 
                lower = q[[1]], 

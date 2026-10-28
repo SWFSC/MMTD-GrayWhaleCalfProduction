@@ -1,26 +1,24 @@
 // =====================================================================
-// Decoupled model:  shared seasonal shape  +  UNPOOLED year levels
+// Fixed-year model:  shared seasonal shape  +  UNPOOLED year levels
 // =====================================================================
-// Identical to the hierarchical NB model EXCEPT year_eff is given a wide,
-// independent prior instead of being shrunk toward a common mean. The terms
-// mu_year and sigma_year are removed.
+// A hierarchical Negative Binomial model 
+// year_eff is given a wide, independent prior instead of being shrunk toward 
+// a common grand mean. 
 //
-//   - week_eff is STILL shared across years -> sparse years keep borrowing the
-//     SEASONAL SHAPE, which is what makes them estimable in the first place.
-//   - each year's LEVEL is now data-driven with NO pull toward the multi-decade
+//   - week_eff is shared across years -> sparse years keep borrowing the
+//     SEASONAL SHAPE from years with many counts. This makes them estimable.
+//   - each year's LEVEL is data-driven without pull toward the multi-decade
 //     average.
 //
-// This is the fix for the shrinkage concern: it keeps the
-// estimability without the upward pull on recent low years. Compare
-// year_eff[2025], year_eff[2026] here against the hierarchical model to read off
-// the year-level shrinkage directly.
-//
 // Note on identifiability: log_mu_true = year_eff + week_eff has a soft additive
-// ridge (add c to every year_eff, subtract c from every week_eff). It is broken
-// the same way as the original model -- week_eff is zero-centred by its prior,
-// so year_eff absorbs the level. Because of the trade off between the level and 
-// shape trade off (correlated posteriors, low ESS on year_eff/sigma_week), a hard
+// ridge (add c to every year_eff, subtract c from every week_eff). 
+// week_eff is zero-centred by its prior, so year_eff absorbs the level. 
+// Because of the trade off between the level and shape (correlated 
+// posteriors, low ESS on year_eff/sigma_week), a hard
 // sum-to-zero constraint on week_eff was added (sum_to_zero_vector).
+//
+// This is considered the best model for producing the 2026 estimate. 
+// Tomo Eguchi with help from AI (Gemini and Claude)
 // =====================================================================
 
 data {
@@ -60,7 +58,8 @@ transformed parameters {
 model {
   year_eff     ~ normal(0, 5);            // wide, INDEPENDENT: no cross-year shrinkage
   week_eff_raw ~ normal(0, 1);
-  p_obs        ~ normal(0.889, 0.06375);
+  //p_obs        ~ normal(0.889, 0.06375);
+  p_obs        ~ beta(20.6967, 2.58418);     // Beta reparam of the Perryman detection estimate (Tinker)
   sigma_week   ~ normal(0, 2);
   phi          ~ gamma(2, 0.1);
 

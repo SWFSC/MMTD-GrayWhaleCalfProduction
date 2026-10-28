@@ -2,19 +2,18 @@
 // Single-year Negative Binomial model  (NO cross-year pooling)
 // =====================================================================
 // Purpose: isolate the YEAR-LEVEL shrinkage. Fit one season at a time with
-// the SAME NB likelihood as the hierarchical model, so the Poisson-vs-NB
-// confound is removed. Compare this fit's estimate for a given year against
+// the same Negative Binomial likelihood as the hierarchical model 
+// (GWCalfCount_nb_fixedyear.stan). This model is compared directly to the
+// Poisson-Binomial model. Compare this fit's estimate for a given year against
 // the hierarchical model's estimate for that year:
 //     gap  =  year-level pull (shrinkage), cleanly isolated.
 //
-// How to use: pass the rows for a SINGLE season only. Re-index that season's
-// weeks to 1..n_weeks (a contiguous range) before passing them in.
-//
 // Expectation: data-rich years should converge and roughly agree with the
-// hierarchical fit; for 2025/2026 (~26 sightings, ~60% zeros) phi, sigma_week
-// and the weekly deviations are weakly identified, so divergences / low ESS /
-// R-hat > 1.01 are likely. That non-convergence is itself a reportable result:
-// it quantifies how little a single sparse season can say without borrowing.
+// hierarchical fit; for 2025/2026 (~26 sightings, ~60% zeros) and some other 
+// years, phi, sigma_week, and the weekly deviations are weakly identified, 
+// so divergences / low ESS / R-hat > 1.01 are likely. 
+//
+// Tomo Eguchi with help from AI (Claude)
 // =====================================================================
 
 data {
@@ -50,7 +49,9 @@ transformed parameters {
 
 model {
   week_eff_raw ~ normal(0, 1);
-  p_obs        ~ normal(0.889, 0.06375);
+  //p_obs        ~ normal(0.889, 0.06375);
+  p_obs      ~ beta(20.6967, 2.58418);     // Beta reparam of the Perryman detection estimate (Tinker's suggestion)
+  
   beta0        ~ normal(0, 5);
   sigma_week   ~ normal(0, 2);             // half-normal via lower=0
   phi          ~ gamma(2, 0.1);

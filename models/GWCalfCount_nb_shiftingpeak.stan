@@ -1,11 +1,11 @@
 // =====================================================================
-// Smooth seasonal pulse with YEAR-VARYING peak timing
+// Smooth seasonal pulse with YEAR-VARYING peak timing -- uncentered
 // =====================================================================
-// Replaces the n_weeks free weekly deviations (week_eff) with a parametric
-// migration curve: a Gaussian bump in week-space with SHARED amplitude and
-// width and a YEAR-SPECIFIC peak week. This:
-//   (a) costs far fewer effective parameters, so the seasonal shape stays
-//       estimable even in sparse years; and
+// Replaces the n_weeks independent weekly deviations (week_eff) with a 
+// parametric migration curve: a Gaussian in week-space with shared amplitude 
+// and width and a year-specific peak week. This:
+//   (a) reduces the number of parameters and costs far fewer effective 
+//       parameters, so the seasonal shape stays estimable even in sparse years; and
 //   (b) directly tests whether migration timing has shifted -- inspect
 //       peak_week[y] across years, and check whether sigma_peak is bounded
 //       away from 0.
@@ -24,6 +24,11 @@
 // misfit (migration curves often have a longer right tail), replace it with an
 // asymmetric kernel (separate left/right widths, or a skew-normal shape) -- a
 // small extension that does not change the rest of the model.
+//
+// MCMC convergence issue. Changed this to the centered version: 
+// GWCalfCount_nb_shiftingpeak_centered.stan
+//
+// Tomo Eguchi with help from AI (Claude)
 // =====================================================================
 
 data {
@@ -90,7 +95,9 @@ model {
   sigma_peak ~ normal(0, 2);              // half-normal; allows multi-week timing shifts
   peak_raw   ~ normal(0, 1);
 
-  p_obs ~ normal(0.889, 0.06375);
+  //p_obs ~ normal(0.889, 0.06375);
+  p_obs      ~ beta(20.6967, 2.58418);     // Beta reparam of the Perryman detection estimate (Tinker's suggestion)
+  
   phi   ~ gamma(2, 0.1);
 
   for (i in 1:n_obs)
