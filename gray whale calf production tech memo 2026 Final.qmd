@@ -45,7 +45,7 @@ source("GrayWhaleCalfProduction_fcns.R")
 flextable::use_flextable_qmd()
 
 # Set it FALSE, once all figures are produced. 
-save.fig <- FALSE #TRUE # 
+save.fig <- TRUE # FALSE #
 
 # flextable defaults
 set_flextable_defaults(font.size = 10,
@@ -190,7 +190,7 @@ The following assumptions by Perryman et al. (2002) are maintained for the metho
 
 ### Historical Analytical Framework
 
-The framework developed by Stewart and Weller (2021) relied on an independent, single-year model utilizing a compound Poisson-Binomial likelihood structure. The model structure calculated the observed counts ($Obs_i$) within discrete 3-hour watch intervals $i$ as a binomial sampling process nested inside a weekly Poisson passage rate ($\lambda_{w}$):
+The framework developed by Stewart and Weller (2021) relied on an independent, single-year model utilizing a compound Poisson-Binomial likelihood structure. The model structure calculated the observed counts ($Obs_i$) within discrete 3-hour watch periods $i$ as a binomial sampling process nested inside a weekly Poisson passage rate ($\lambda_{w}$):
 
 $$Obs_{i} \sim \text{Binomial}(\text{True}_{i}, p_{i})$$
 
@@ -319,7 +319,7 @@ save.fig.fcn(fig = p.phi.smooth,
 
 Models were fitted to the data using Stan (v2.39.0, https://mc-stan.org/) via the *cmdstanr* package (Gabry et al. 2024) in R. Four independent chains of MCMC were run with 1000 warm-up steps, which were discarded, and 2000 sampling steps for inference. Convergence of MCMC was examined using the bulk and tail effective sample sizes (ESS) and the rank-normalized $\hat{R}$ statistics [@vehtari_rank-normalization_2021; @vehtari_practical_2017]. Successful convergence was assumed when both bulk and tail ESS exceeded 400, and all $\hat{R}$ statistics were less than 1.01.
 
-Conventional model selection procedures, such as Leave-One-Out information criteria (LOOIC), were computed but not used as the primary model selection tool because (a) total mother-calf abundance is calculated from both observed and unobserved intervals, but likelihood values are only available for the observed portions. LOOIC, therefore, only evaluates predictive performance on observed intervals, which does not directly represent the target estimand; (b) LOOIC favors complex models with year-specific seasonal curves (e.g., the fixed-year shifting-peak model) while penalizing the parsimonious curve deliberately selected to stabilize estimation in years with sparse data (the fixed-year model); and (c) the primary objective of this exercise was to find a model that can provide a robust estimate of gray whale mother-calf abundance for 2026 when the existing model failed. Thus, model selection was based on the robustness of parameter estimates in recent years with very low counts. A posterior predictive check of the selected model was used to assess its adequacy.
+Conventional model selection procedures, such as Leave-One-Out information criteria (LOOIC), were computed but not used as the primary model selection tool because (a) total mother-calf abundance is calculated from both observed and unobserved watch periods, but likelihood values are only available for the observed portions. LOOIC, therefore, only evaluates predictive performance on observed watch periods, which does not directly represent the target estimand; (b) LOOIC favors complex models with year-specific seasonal curves (e.g., the fixed-year shifting-peak model) while penalizing the parsimonious curve deliberately selected to stabilize estimation in years with sparse data (the fixed-year model); and (c) the primary objective of this exercise was to find a model that can provide a robust estimate of gray whale mother-calf abundance for 2026 when the existing model failed. Thus, model selection was based on the robustness of parameter estimates in recent years with very low counts. A posterior predictive check of the selected model was used to assess its adequacy.
 
 Data, Stan and Jags code, and R script files used in this analysis are available in the following GitHub repository (https://github.com/SWFSC/MMTD-GrayWhaleCalfProduction).
 
@@ -785,7 +785,7 @@ save.fig.fcn(fig = PPC.compared$plot,
 
 ```
 
-The observed proportion of zero counts (`r prop.zeros.obs %>% signif(3)`) among watch periods with non-zero effort was in the right tail of the posterior predictive distribution of zero counts (mean = `r mean(prop.zeros) %>% signif(3)`, Bayesian p = `r prob.prop.zeros`, @suppfig-prop-zeros), indicating that the fixed-year model underpredicts zeros. The magnitude was small (`r 100 * (prop.zeros.obs-mean(prop.zeros)) %>% signif(3)` percentage points across `r dim(fixedyear.ppc$y.rep)[2]` intervals). When restricted to 2025 and 2026, the observed proportion (`r prop.zeros.obs.2025.2026 %>% signif(3)`) fell within the predictive distribution (mean = `r mean(prop.zeros.2025.2026) %>% signif(3)`, Bayesian p = `r prob.prop.zeros.2025.2026 %>% signif(3)`), with a comparable deviation in the same direction (`r 100 * (prop.zeros.obs.2025.2026-mean(prop.zeros.2025.2026)) %>% signif(3)` percentage points across `r n.obs.2025.2026` intervals). These results suggested that the fixed-year model tends to underpredict zeros uniformly across mother-calf abundance levels. The Poisson-Binomial model underpredicted zeros to a greater extent than the Negative Binomial model (@suppfig-prop-zeros-compared).
+The observed proportion of zero counts (`r prop.zeros.obs %>% signif(3)`) among watch periods with non-zero effort was in the right tail of the posterior predictive distribution of zero counts (mean = `r mean(prop.zeros) %>% signif(3)`, Bayesian p = `r prob.prop.zeros`, @suppfig-prop-zeros), indicating that the fixed-year model underpredicts zeros. The magnitude was small (`r 100 * (prop.zeros.obs-mean(prop.zeros)) %>% signif(3)` percentage points across `r dim(fixedyear.ppc$y.rep)[2]` watch periods). When restricted to 2025 and 2026, the observed proportion (`r prop.zeros.obs.2025.2026 %>% signif(3)`) fell within the predictive distribution (mean = `r mean(prop.zeros.2025.2026) %>% signif(3)`, Bayesian p = `r prob.prop.zeros.2025.2026 %>% signif(3)`), with a comparable deviation in the same direction (`r 100 * (prop.zeros.obs.2025.2026-mean(prop.zeros.2025.2026)) %>% signif(3)` percentage points across `r n.obs.2025.2026` watch periods). These results suggested that the fixed-year model tends to underpredict zeros uniformly across mother-calf abundance levels. The Poisson-Binomial model underpredicted zeros to a greater extent than the Negative Binomial model (@suppfig-prop-zeros-compared).
 
 In summary, the differences in point estimates from the previous report and this report result from a few reasons: (i) if the survey effort was consistent across years, estimates are lower under the Negative Binomial models througout the series than the Poisson-Binomial model, increasingly so as mother-calf abundance declines; (ii) low effort in the middle of a season (presumed peak weeks) can result in lower estimates with single-year model because the seasonal curve is affected by the low observed counts; (iii) the Poisson-Binomial single-year model was unable to estimate the 2026 mother-calf abundance due to the small number of sightings spread over several weeks.
 
@@ -920,7 +920,7 @@ Estimated annual abundance of eastern North Pacific gray whale mother-calf pairs
 
 Model notation is summarized in @supptbl-model-notation
 
-The observed count ($c$) during the watch interval $i$ is assumed to be distributed as a Negative Binomial distribution ($\mathrm{NegBin2}$) with mean $\alpha$ and dispersion parameter $\phi$, where intervals are indexed sequentially across the entire 1994–2026 dataset.
+The observed count ($c$) during the watch period $i$ is assumed to be distributed as a Negative Binomial distribution ($\mathrm{NegBin2}$) with mean $\alpha$ and dispersion parameter $\phi$, where watch periods are indexed sequentially across the entire 1994–2026 dataset.
 
 $$c_i \mid \phi ;\sim; \mathrm{NegBin2}(\alpha_i, \phi),$$ {#eq-obs}
 
@@ -928,14 +928,14 @@ $$\mathbb{E}[c_i]=\alpha_i,
 \qquad \mathrm{Var}[c_i]=\alpha_i + \alpha_i^{2}/\phi
 \;\xrightarrow[\phi\to\infty]{}\; \alpha_i \ \ (\text{Poisson}).$$ {#eq-meanvar}
 
-The mean ($\alpha$) is a product of three components: the mean abundance of mother-calf pairs ($\mu$), detection probability ($p$), and effort ($\mathrm{eff}$), which is the proportion of the 3-hour interval surveyed (hours surveyed/3), so $\mathrm{eff_i} \in [0,1]$. The effort is also described below as an offset. The calculation is conducted in natural-log space.
+The mean ($\alpha$) is a product of three components: the mean abundance of mother-calf pairs ($\mu$), detection probability ($p$), and effort ($\mathrm{eff}$), which is the proportion of the 3-hour watch period surveyed (hours surveyed/3), so $\mathrm{eff_i} \in [0,1]$. The effort is also described below as an offset. The calculation is conducted in natural-log space.
 
 $$\alpha_i = \mu_i\ \times \underbrace{p}_{\text{detection}}\ \times \underbrace{\mathrm{eff}_i}_{\text{effort}}, \qquad 
 \log \alpha_i = \log \mu_i + \log p + \log \mathrm{eff}_i $$ {#eq-alpha.def}
 
 This model was applied to the dataset in two ways: each year separately (single-year), as was done with the previous approach, and with a hierarchical approach (fixed-year), in which some parameters were shared among years (details below).
 
-When treating the model with a hierarchical structure with shared parameters among years, the mean abundance of the i-th interval ($\mu_{i}$) comes from two components: "level" and "shape." The "level" ($\theta_{y[i]}$) refers to the abundance of mother-calf pairs for the year ($y$), whereas the "shape" ($s_{w[i]}$) refers to the within-season weekly component, where $w[i]$ denotes the indexed week of the interval $i$.
+When treating the model with a hierarchical structure with shared parameters among years, the mean abundance of the i-th watch period ($\mu_{i}$) comes from two components: "level" and "shape." The "level" ($\theta_{y[i]}$) refers to the abundance of mother-calf pairs for the year ($y$), whereas the "shape" ($s_{w[i]}$) refers to the within-season weekly component, where $w[i]$ denotes the indexed week of the watch period $i$.
 
 $$\log \mu_{i} = \underbrace{\theta_{y[i]}}_{\text{level}} + \underbrace{s_{w[i]}}_{\text{shape}}$$ {#eq-mean}
 
@@ -959,7 +959,7 @@ $$\theta_y \sim \mathrm{N}(0,\,5)\ \ (\text{fixed-year})$$ {#eq-fixed-year-level
 
 $$\theta_y \sim \mathrm{N}(\mu_\theta,\,\sigma_\theta)\ \ \text{(random-year — shrinks levels)}$$ {#eq-randomyear_level}
 
-With the joint posterior distribution of $\lambda$, the underlying latent weekly rate, and $\phi$, the effort-corrected detection probability for the watch interval $i$:
+With the joint posterior distribution of $\lambda$, the underlying latent weekly rate, and $\phi$, the effort-corrected detection probability for the watch period $i$:
 
 $$p_{i} = p\times\mathrm{eff}_{i}$$ {#eq-effort-corrected-p}
 
@@ -977,7 +977,7 @@ $$\lambda_{i} \mid c_{i} \;\sim\; \mathrm{Gamma}\!\Big(\phi + c_{i},\ \frac{\phi
 
 $$T_{i} = c_{i} + \mathrm{missed}_{i},\ \ \mathrm{missed}_{i}\mid\lambda_{i} \sim \mathrm{Poisson}\!\big(\lambda_{i}(1-p_{i})\big)$$ {#eq-reconstruction}
 
-For zero-effort intervals (i.e., $p_{i}=0$), $\lambda_{i}$ is drawn from @eq-lambda-conditional, and $T_{i}$ is imputed as the sum of observed counts ($c_i$) and missed counts ($\mathrm{Poisson}(\lambda_{i}(1-p_i))$, @eq-reconstruction). Total seasonal abundance for the year $y$ is calculated as $N_y=\sum_{i:\,y[i]=y} T_i$ simulated from these posterior draws.
+For zero-effort watch periods (i.e., $p_{i}=0$), $\lambda_{i}$ is drawn from @eq-lambda-conditional, and $T_{i}$ is imputed as the sum of observed counts ($c_i$) and missed counts ($\mathrm{Poisson}(\lambda_{i}(1-p_i))$, @eq-reconstruction). Total seasonal abundance for the year $y$ is calculated as $N_y=\sum_{i:\,y[i]=y} T_i$ simulated from these posterior draws.
 
 The fixed-year model assumes that the seasonal migration curve is identical across years ($s_w$, @eq-shape) so that each year's curve differs only in its level ($\theta_y$). This assumption allows years with sparse data to borrow the migration shape from the full time series, but it also constrains every year to peak in the same week. To evaluate the sensitivity of the mother-calf abundance estimates to this constraint, we fitted an alternative model that allowed the timing of the peak to vary across years. Rather than estimating a separate set of $W$ weekly deviations for each year --- which would be unidentifiable in years with few sightings --- the seasonal curve was described by a parametric pulse with three parameters: an amplitude ($A$), a width ($\tau$), and a peak week ($\pi_y$). Only the peak week varied across years; the amplitude and width were shared across the time series, and the annual level ($\theta_y$) remained independent among years as in @eq-fixed-year-level. This model is referred to as the NB fixed-year shifting-peak (also simply shifting-peak) model.
 
@@ -993,7 +993,7 @@ where $\pi_y$ is the peak week of the year $y$.
 
 Mean-centering the migration pulse ($g_{y[i], w[i]}-\bar g_{y[i]}$) in @eq-logmu ensures that the pulse averages to zero over the migration season. Consequently, $\theta_y$ remains the mean level and decouples from the amplitude parameter $A$. This reparameterization greatly improved the efficiency of MCMC.
 
-In the fixed-year model, the weekly deviations were treated as independent (@eq-shape). As a sensitivity analysis relaxing this assumption, the seasonal shape effects were modeled with a first-order autoregressive structure. Let $\tilde{s}_w$ denote the un-centered weekly effect for week $w = 1, \ldots, W$, modeled as a stationary AR(1) process:
+In the fixed-year model, the weekly deviations were treated as independent (@eq-shape). As a sensitivity analysis relaxing this assumption, the seasonal shape effects were modeled with a first-order autoregressive structure. Let $\tilde{s}_w$ denote the uncentered weekly effect for week $w = 1, \ldots, W$, modeled as a stationary AR(1) process:
 
 $$
 \begin{align}
@@ -1051,13 +1051,13 @@ notation_data <- tibble(
     "peak_week[y] = mu_peak + sigma_peak * peak_raw"
   ),
   Meaning = c(
-    "Observed pairs in interval i",
-    "Effort fraction of interval i",
+    "Observed pairs in watch period i",
+    "Effort fraction of watch period i",
     "Detection probability (external prior; not identified from these data)",
     "Negative-binomial dispersion",
     "Year (log) level",
     "Seasonal (log) shape deviation",
-    "Expected pairs per fully-observed interval",
+    "Expected pairs per fully-observed watch period",
     "Expected observed count (after detection + effort)",
     "Pulse amplitude (shifting-peak model)", 
     "pulse width (shifting-peak model)", 
