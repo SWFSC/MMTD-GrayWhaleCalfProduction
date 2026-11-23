@@ -7,7 +7,7 @@ format:
       - flextable-qmd
       - at: post-render
         path: _extensions/flextable-qmd/unwrap-float.lua
-    reference-doc: reference_template.docx
+    reference-doc: reference_template_draft.docx
 number-sections: false
 editor: visual
 crossref:
